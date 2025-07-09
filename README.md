@@ -6,11 +6,13 @@ An official Swiss Government project made by
 the [Federal Office of Information Technology, Systems and Telecommunication FOITT](https://www.bit.admin.ch/)
 as part of the electronic identity (e-ID) project.
 
-**⚠️ PARTLY OUTDATED ⚠️**
+**⚠️ PARTIAL IMPLEMENTATION ⚠️**
 
-*Users must not use this library to create new DIDs, as they won't be compatible.*
+*Beware, this Rust library implements historical [Trust DID Web - did:tdw - v0.3 specification](https://identity.foundation/didwebvh/v0.3)
+only partially while focusing solely on [DID resolution](https://identity.foundation/didwebvh/v0.3/#read-resolve).*
 
-This project has been superseded by [DID Toolbox](https://github.com/swiyu-admin-ch/didtoolbox-java). Parts of this library are still required by [DID Resolver](https://github.com/swiyu-admin-ch/didresolver). This library will vanish in the near future, and the required parts will be relocated to Resolver.
+Although the library is still required by [DID Resolver](https://github.com/swiyu-admin-ch/didresolver), it will be kept
+in the future as legacy and solely for the sake of backward compatibility, as [newer version of the specifications](https://identity.foundation/didwebvh/v1.0) is currently being implemented.
 
 ## Using the library
 
@@ -18,7 +20,7 @@ The library can be used either directly in Rust as is.
 
 ### Rust
 
-The library can be used directly in rust by adding the following dependency to your `Cargo.toml`:
+The library can be used directly in Rust by adding the following dependency to your `Cargo.toml`:
 
 ````toml
 [dependencies]

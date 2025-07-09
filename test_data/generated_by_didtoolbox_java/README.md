@@ -1,8 +1,8 @@
 # DID logs for benchmarking
 
 Among other artefacts, this directory also features several DID logs (`v*_did.jsonl`) intended for benchmarking purposes.
-These were generated using [`didtoolbox`](https://github.com/swiyu-admin-ch/didtoolbox-java) available for download
-[here](https://repo1.maven.org/maven2/io/github/swiyu-admin-ch/didtoolbox/). Here the relevant script:
+These were generated using latest Java [`didtoolbox`](https://github.com/swiyu-admin-ch/didtoolbox-java) available for download
+[here](https://repo1.maven.org/maven2/io/github/swiyu-admin-ch/didtoolbox/). Here is the relevant script:
 
 ```bash
 # cleanup

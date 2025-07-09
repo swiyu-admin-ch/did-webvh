@@ -1,9 +1,9 @@
 [package]
 name = "did_tdw"
-version = "2.1.1"
+version = "1.0.0"
 edition = "2021"
 license = "MIT"
-description = "A partial implementation (focusing on resolution) of Trust DID Web - did:tdw - v0.3 specification"
+description = "A partial implementation (focusing on resolution) of historical Trust DID Web - did:tdw - v0.3 specification"
 authors = ["Frithjof Hoppe", "Vladica Stojic"]
 homepage = "https://github.com/swiyu-admin-ch/did-tdw"
 readme = "README.md"

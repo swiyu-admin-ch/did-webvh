@@ -11,4 +11,4 @@ machdep.cpu.thread_count: 12
 machdep.cpu.brand_string: Apple M3 Pro
 ```
 
-Start browsing the reports [here](https://htmlpreview.github.io/?https://raw.githubusercontent.com/swiyu-admin-ch/didtoolbox/main/criterion/report/index.html).
+Start browsing the reports [here](https://htmlpreview.github.io/?https://raw.githubusercontent.com/swiyu-admin-ch/did-tdw/main/criterion/report/index.html).
