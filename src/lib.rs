@@ -22,7 +22,7 @@ use did_sidekicks::did_jsonschema::*;
 use errors::*;
 use did_tdw_jsonschema::*;
 
-uniffi::include_scaffolding!("didtoolbox");
+uniffi::include_scaffolding!("did_tdw");
 
 #[cfg(test)]
 mod test {
@@ -42,26 +42,6 @@ mod test {
     use serde_json::{json, Value as JsonValue};
     use std::path::Path;
     use std::{fs, vec};
-    //
-    // INFO: To run tests in this module, it is NO NEED to start the 'did_server'
-    //       located in the folder with the same name anymore!!!
-    //
-    // However, if still interested in using it (as kind of playground), here is a short how-to manual.
-    //
-    // For instance on macOS, a Linux container may be started by running following commands:
-    // - install podman:              brew update && brew install podman
-    // - to start a container:        podman run -it --rm -v $(pwd):$(pwd):Z -w $(pwd) -p 8000:8000 rust
-    // - to setup system packages:    apt-get update && apt-get install python3-fastapi jq lsof -y
-    // - to generate bindings:        source python-build.sh
-    // - to boot up the test-server:  python3 did_server/main.py &
-    //                                ("lsof -i:8000" should produce some output)
-    // - to (smoke) test bindings:    python3 did_server/playground.py | tail -2 | jq
-    //                                Output:
-    //                                INFO:     127.0.0.1:55058 - "POST /123456789/did.jsonl HTTP/1.1" 201 Created
-    //                                INFO:     127.0.0.1:55068 - "GET /123456789/did.jsonl HTTP/1.1" 200 OK
-    // - and the last, but not least: cargo test --color=always --profile test --package didtoolbox --lib test --no-fail-fast --config env.RUSTC_BOOTSTRAP=\"1\" -- --format=json -Z unstable-options --show-output
-    // - press CTRL+D to exit container
-    //
 
     #[fixture]
     fn unique_base_url() -> String {

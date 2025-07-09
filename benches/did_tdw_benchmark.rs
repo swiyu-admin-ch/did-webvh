@@ -2,8 +2,8 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use did_sidekicks::did_jsonschema::DidLogEntryValidator;
-use didtoolbox::did_tdw::TrustDidWeb;
-use didtoolbox::did_tdw_jsonschema::DidLogEntryJsonSchema;
+use did_tdw::did_tdw::TrustDidWeb;
+use did_tdw::did_tdw_jsonschema::DidLogEntryJsonSchema;
 use rayon::prelude::*;
 use std::fs;
 use std::path::Path;

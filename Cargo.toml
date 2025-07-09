@@ -1,11 +1,11 @@
 [package]
-name = "didtoolbox"
+name = "did_tdw"
 version = "2.1.1"
 edition = "2021"
 license = "MIT"
-description = "A set of tools required to implement Trust DID Web - did:tdw - v0.3 specification"
+description = "A partial implementation (focusing on resolution) of Trust DID Web - did:tdw - v0.3 specification"
 authors = ["Frithjof Hoppe", "Vladica Stojic"]
-homepage = "https://github.com/swiyu-admin-ch/didtoolbox"
+homepage = "https://github.com/swiyu-admin-ch/did-tdw"
 readme = "README.md"
 include = [
     "Cargo.toml",
@@ -39,12 +39,12 @@ rstest = "0.25.0"
 criterion = "0.6.0"
 
 [[bench]]
-name = "didtoolbox_benchmark"
+name = "did_tdw_benchmark"
 harness = false
 
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
-name = "didtoolbox"
+name = "did_tdw"
 #path = "src/lib.rs" # `cargo readme` command insist on it
 
 [[bin]]

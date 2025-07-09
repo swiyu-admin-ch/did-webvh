@@ -1,13 +1,6 @@
-# DID toolbox changelog
+# DID TDW changelog
 
-| Version | Description                                                                                                                                                                                                                                                                                |
-|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 2.1.1   | **IMPROVEMENT/FIX**: [`jsonschema`](src/embed/jsonschema) enhanced to support DID URLs feat. port number                                                                                                                                                                                   |
-| 2.1.0   | **FEATURE**: Using [`jsonschema`](src/embed/jsonschema) to ensure DID log conformity. Added [benchmarks](https://htmlpreview.github.io/?https://raw.githubusercontent.com/swiyu-admin-ch/didtoolbox/main/criterion/report/index.html)                                                      |
-| 2.0.0   | **BREAKING CHANGE**: Both `TrustDidWebId::parse_did_tdw` and `TrustDidWeb::read` constructors have been simplified thus supporting no `allow_http` flag anymore. Various **security fixes** implemented and overall **error handling** enhancements introduced.                            |
-| 1.0.1   | **IMPROVEMENT/FIX (security)**: Rectify faulty proof verification for DID log updates. It fixes a faulty proof verification that allowed to use updateKeys contained in a to be added DID log line for generating valid proofs. Proper error handling (no panics) impl. across all modules |
-| 1.0.0   | **IMPROVEMENT/FIX** Cleanup. Fixed interop issue. Final attempt to ensure conformity with [Trust DID Web - did:tdw - v0.3](https://identity.foundation/trustdidweb/v0.3/) - Only required Resolver parts                                                                                   |
-| 0.0.5   | **IMPROVEMENT/FIX** Ensured conformity with [Trust DID Web - did:tdw - v0.3](https://identity.foundation/trustdidweb/v0.3/)                                                                                                                                                                |
-| 0.0.4   | **FEATURE** Non-empty constructor added for `TrustDidWeb`. Code formatted using `rustfmt`                                                                                                                                                                                                  |
-| 0.0.3   | **BREAKING CHANGE** `TrustDidWebProcessor` discontinued. <br/>Signature of the `read` method now also requires a DID log (as string).<br/> All `TrustDidWeb` methods may now throw new `TrustDidWebError`                                                                                  |
+| Version | Description                                                            |
+|---------|------------------------------------------------------------------------|
+| 1.0.0   | Forked from [didtoolbox](https://github.com/swiyu-admin-ch/didtoolbox) |
 

@@ -1,6 +1,6 @@
 ![Public Beta banner](https://github.com/e-id-admin/eidch-public-beta/blob/main/assets/github-banner-publicbeta.jpg)
 
-# DID toolbox
+# DID TDW
 
 An official Swiss Government project made by
 the [Federal Office of Information Technology, Systems and Telecommunication FOITT](https://www.bit.admin.ch/)
@@ -22,10 +22,7 @@ The library can be used directly in rust by adding the following dependency to y
 
 ````toml
 [dependencies]
-didtoolbox = { git = "https://github.com/swiyu-admin-ch/didtoolbox", branch = "main" }
-
-# Optional: For manipulating the json content in the example
-serde_json = "1.0.133"
+did_tdw = { git = "https://github.com/swiyu-admin-ch/did-tdw", branch = "main" }
 ````
 
 ## Benchmarks
