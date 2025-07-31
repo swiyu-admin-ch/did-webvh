@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: MIT
+namespace did_webvh {
+};
+
+[ExternalInterface="did_sidekicks"]
+typedef extern Ed25519Signature;
+
+[ExternalInterface="did_sidekicks"]
+typedef extern Ed25519SigningKey;
+
+[ExternalInterface="did_sidekicks"]
+typedef extern Ed25519VerifyingKey;
+
+[ExternalInterface="did_sidekicks"]
+typedef extern Ed25519KeyPair;
+
+[External="did_sidekicks"]
+typedef extern Jwk;
+
+[External="did_sidekicks"]
+typedef extern VerificationType;
+
+[External="did_sidekicks"]
+typedef extern VerificationMethod;
+
+[ExternalInterface="did_sidekicks"]
+typedef extern DidDoc;
+
+[ExternalInterface="did_sidekicks"]
+typedef extern DidLogEntryValidatorError;
+
+[ExternalInterface="did_sidekicks"]
+typedef extern DidLogEntryValidator;
+
+/// The error accompanying TrustDidWebId.
+/// It might occur while calling TrustDidWebId methods.
+[Error]
+enum TrustDidWebIdResolutionError {
+    /// DID method is not supported by this resolver.
+    "MethodNotSupported",
+    /// Invalid method-specific identifier.
+    "InvalidMethodSpecificId"
+};
+
+/// Represents a DID WEBVH, as specified at https://identity.foundation/didwebvh/v1.0/#method-specific-identifier:
+///
+/// "The did:webvh method-specific identifier contains both the self-certifying identifier (SCID) for the DID,
+/// and a fully qualified domain name (with an optional path) that is secured by a TLS/SSL certificate."
+interface TrustDidWebId {
+    /// The only (non-empty) constructor in charge of DID parsing.
+    ///
+    /// CAUTION Calling any of the available getters should take place after this method is called, not earlier.
+    [Name=parse_did_webvh, Throws=TrustDidWebIdResolutionError]
+    constructor(string did_webvh);
+    /// Returns the SCID part from the supplied DID.
+    string get_scid();
+    /// Returns the url part from the supplied DID WEBVH.
+    string get_url();
+};
+
+/// The error accompanying TrustDidWeb.
+/// It might occur while calling TrustDidWeb methods.
+[Error]
+enum TrustDidWebError {
+    /// DID method is not supported by this resolver.
+    "MethodNotSupported",
+    /// Invalid method-specific identifier.
+    "InvalidMethodSpecificId",
+    /// Failed to serialize DID document (to JSON).
+    "SerializationFailed",
+    /// The supplied did doc is invalid or contains an argument which isn't part of the did specification/recommendation.
+    "DeserializationFailed",
+    /// Invalid (or not yet supported) operation against DID doc.
+    "InvalidOperation",
+    /// Invalid DID parameter.
+    "InvalidDidParameter",
+    /// Invalid DID document.
+    "InvalidDidDocument",
+    /// Invalid DID log integration proof.
+    "InvalidDataIntegrityProof"
+};
+
+interface TrustDidWeb {
+    [Name=read, Throws=TrustDidWebError]
+    constructor(string did_webvh, string did_log);
+    string get_did();
+    string get_did_log();
+    string get_did_doc();
+    [Throws=TrustDidWebError]
+    DidDoc get_did_doc_obj();
+};
+
+interface DidDocumentState {
+    [Name=from, Throws=TrustDidWebError]
+    constructor(string did_log);
+    [Throws=TrustDidWebError]
+    DidDoc validate();
+    [Throws=TrustDidWebError]
+    DidDoc validate_with_scid(string? scid);
+};
+
+/// W.r.t. corresponding specification version available at https://identity.foundation/didwebvh
+///
+/// # CAUTION The single currently supported `didwebvh` specification version is: v0.3
+enum DidLogEntryJsonSchema {
+    /// As defined by https://identity.foundation/didwebvh/v0.3 but w.r.t. (eID-conformity) addendum:
+    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check
+    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Doc+Conformity+Check
+    "V03EidConform",
+    /// As (strictly) specified by https://identity.foundation/didwebvh/v0.3
+    "V03",
+};

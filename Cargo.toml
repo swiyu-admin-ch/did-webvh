@@ -1,11 +1,11 @@
 [package]
-name = "did_tdw"
+name = "did_webvh"
 version = "1.0.0"
 edition = "2021"
 license = "MIT"
-description = "A partial implementation (focusing on resolution) of historical Trust DID Web - did:tdw - v0.3 specification"
-authors = ["Frithjof Hoppe", "Vladica Stojic"]
-homepage = "https://github.com/swiyu-admin-ch/did-tdw"
+description = "A partial implementation (focusing on resolution) of DID Web + Verifiable History (did:webvh) v1.0 specification"
+authors = ["Frithjof Hoppe", "Vladica Stojic", "Marcel Pfeuti"]
+homepage = "https://github.com/swiyu-admin-ch/did-webvh"
 readme = "README.md"
 include = [
     "Cargo.toml",
@@ -39,12 +39,12 @@ rstest = "0.25.0"
 criterion = "0.6.0"
 
 [[bench]]
-name = "did_tdw_benchmark"
+name = "did_webvh_benchmark"
 harness = false
 
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
-name = "did_tdw"
+name = "did_webvh"
 #path = "src/lib.rs" # `cargo readme` command insist on it
 
 [[bin]]

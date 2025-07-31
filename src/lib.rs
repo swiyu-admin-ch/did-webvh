@@ -3,30 +3,30 @@
 //! This project implements the following things:
 //!
 //! - General util structs reused by other libraries of swiyu-admin-ch
-//! - Trust did web according to the specification [trust-did-web](https://bcgov.github.io/trustdidweb/)
+//! - DID Web + Verifiable History (did:webvh) as [specified](https://identity.foundation/didwebvh/v1.0/)
 //!
 
 extern crate core;
 
-pub mod did_tdw;
-pub mod did_tdw_parameters;
+pub mod did_webvh;
+pub mod did_webvh_parameters;
 pub mod errors;
-pub mod did_tdw_jsonschema;
+pub mod did_webvh_jsonschema;
 
 // CAUTION All structs required by UniFFI bindings generator (declared in UDL) MUST also be "used" here
-use did_tdw::*;
+use did_webvh::*;
 use did_sidekicks::did_doc::*;
 use did_sidekicks::ed25519::*;
 use did_sidekicks::did_jsonschema::*;
 //use did_sidekicks::vc_data_integrity;
 use errors::*;
-use did_tdw_jsonschema::*;
+use did_webvh_jsonschema::*;
 
-uniffi::include_scaffolding!("did_tdw");
+uniffi::include_scaffolding!("did_webvh");
 
 #[cfg(test)]
 mod test {
-    use super::did_tdw::*;
+    use super::did_webvh::*;
     use did_sidekicks::did_doc::*;
     use did_sidekicks::ed25519::*;
     use did_sidekicks::jcs_sha256_hasher::*;
@@ -109,7 +109,7 @@ mod test {
         "https://localhost/.hidden/did.jsonl"
     )]
     fn test_tdw_to_url_conversion(#[case] tdw: String, #[case] url: String) {
-        let tdw = TrustDidWebId::parse_did_tdw(tdw).unwrap();
+        let tdw = TrustDidWebId::parse_did_webvh(tdw).unwrap();
         let resolved_url = tdw.get_url();
         assert_eq!(resolved_url, url)
     }
@@ -118,7 +118,7 @@ mod test {
     #[case("did:xyz:QMySCID:localhost%3A8000:123:456")]
     #[case("url:tdw:QMySCID:localhost%3A8000:123:456")]
     fn test_tdw_to_url_conversion_error_kind_method_not_supported(#[case] tdw: String) {
-        match TrustDidWebId::parse_did_tdw(tdw) {
+        match TrustDidWebId::parse_did_webvh(tdw) {
             Err(e) => assert_eq!(
                 e.kind(),
                 TrustDidWebIdResolutionErrorKind::MethodNotSupported
@@ -140,7 +140,7 @@ mod test {
     #[case("did:tdw:SCID::123:")] // no fully qualified domain
     #[case("did:tdw::localhost%3A8000:123:456")] // empty/missing SCID
     fn test_tdw_to_url_conversion_error_kind_invalid_method_specific_id(#[case] tdw: String) {
-        match TrustDidWebId::parse_did_tdw(tdw) {
+        match TrustDidWebId::parse_did_webvh(tdw) {
             Err(e) => assert_eq!(
                 e.kind(),
                 TrustDidWebIdResolutionErrorKind::InvalidMethodSpecificId
@@ -361,16 +361,16 @@ mod test {
         "test_data/generated_by_didtoolbox_java/v400_did.jsonl",
         "did:tdw:QmPsui8ffosRTxUBP8vJoejauqEUGvhmWe77BNo1StgLk7:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
     )]
-    fn test_read_did_tdw(
+    fn test_read_did_webvh(
         #[case] did_log_raw_filepath: String,
         #[case] did_url: String,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath))?;
 
         // Read the newly did doc
-        let tdw_v1 = TrustDidWeb::read(did_url.clone(), did_log_raw)?;
-        let did_doc_v1: JsonValue = serde_json::from_str(&tdw_v1.get_did_doc())?;
-        let did_doc_obj_v1 = DidDoc::from_json(&tdw_v1.get_did_doc())?;
+        let webvh_v1 = TrustDidWeb::read(did_url.clone(), did_log_raw)?;
+        let did_doc_v1: JsonValue = serde_json::from_str(&webvh_v1.get_did_doc())?;
+        let did_doc_obj_v1 = DidDoc::from_json(&webvh_v1.get_did_doc())?;
 
         assert!(!did_doc_v1["@context"].to_string().is_empty());
         match did_doc_v1["id"] {
@@ -383,7 +383,7 @@ mod test {
         assert!(!did_doc_v1["authentication"].to_string().is_empty());
         assert!(!did_doc_v1["controller"].to_string().is_empty());
 
-        assert_eq!(did_doc_obj_v1.id, tdw_v1.get_did());
+        assert_eq!(did_doc_obj_v1.id, webvh_v1.get_did());
         assert!(!did_doc_obj_v1.verification_method.is_empty());
         assert!(!did_doc_obj_v1.authentication.is_empty());
         //assert!(!did_doc_v1_obj.controller.is_empty());
@@ -397,7 +397,7 @@ mod test {
         "test_data/generated_by_tdw_js/deactivated.jsonl",
         "did:tdw:QmdSU7F2rF8r4m6GZK7Evi2tthfDDxhw3NppU8pJMbd2hB:example.com"
     )]
-    fn test_read_did_tdw_deactivated(
+    fn test_read_did_webvh_deactivated(
         #[case] did_log_raw_filepath: String,
         #[case] did_url: String,
     ) -> Result<(), Box<dyn std::error::Error>> {
