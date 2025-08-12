@@ -21,47 +21,46 @@ pub enum DidLogEntryJsonSchema {
     V03EidConform,
     /// As (strictly) specified by https://identity.foundation/didwebvh/v0.3
     V03,
-    /*
-    /// Yet to be implemented
+
+    /// As defined by https://identity.foundation/didwebvh/v1.0 but w.r.t. (eID-conformity) addendum:
+    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check
+    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Doc+Conformity+Check
+    V1_0EidConform,
+    /// As (strictly) specified by https://identity.foundation/didwebvh/v1.0
     V1_0,
-     */
 }
 
 impl DidLogEntryJsonSchema {
     /// As defined by https://identity.foundation/didwebvh/v0.3
-    const DID_LOG_ENTRY_JSONSCHEMA_V_0_3_FILENAME: &'static str = "did_log_jsonschema_v_0_3.json";
+    const DID_LOG_ENTRY_JSONSCHEMA_V_0_3_FILENAME: &str = "did_log_jsonschema_v_0_3.json";
 
     /// As defined by https://identity.foundation/didwebvh/v0.3 bzt w.r.t. (eID-conformity) addendum:
     /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check
     /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Doc+Conformity+Check
-    const DID_LOG_ENTRY_JSONSCHEMA_V_0_3_EID_CONFORM_FILENAME: &'static str =
+    const DID_LOG_ENTRY_JSONSCHEMA_V_0_3_EID_CONFORM_FILENAME: &str =
         "did_log_jsonschema_v_0_3_eid_conform.json";
+
+    /// As defined by https://identity.foundation/didwebvh/v1.0
+    const DID_LOG_ENTRY_JSONSCHEMA_V_1_0_FILENAME: &str = "did_log_jsonschema_v_1_0.json";
+
+    /// As defined by https://identity.foundation/didwebvh/v1.0 but w.r.t. (eID-conformity) addendum:
+    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check
+    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Doc+Conformity+Check
+    const DID_LOG_ENTRY_JSONSCHEMA_V_1_0_EID_CONFORM_FILENAME: &str =
+        "did_log_jsonschema_v_1_0_eid_conform.json";
 
     /// Converts this type into a corresponding JSON schema in UTF-8 format.
     pub fn as_schema(&self) -> String {
-        match self {
-            Self::V03 => {
-                // CAUTION This (i.e. unwrap() call) will panic only if file denoted by DID_LOG_ENTRY_JSONSCHEMA_V_0_3_FILENAME does not exist
-                let jsonschema_file =
-                    DidLogJsonSchemaEmbedFolder::get(Self::DID_LOG_ENTRY_JSONSCHEMA_V_0_3_FILENAME)
-                        .unwrap();
-                // CAUTION This (i.e. unwrap() call) will panic only if file denoted by DID_LOG_ENTRY_JSONSCHEMA_V_0_3_FILENAME is not UTF-8
-                from_utf8(jsonschema_file.data.as_ref())
-                    .unwrap()
-                    .to_string()
-            }
-            Self::V03EidConform => {
-                // CAUTION This (i.e. unwrap() call) will panic only if file denoted by DID_LOG_ENTRY_JSONSCHEMA_V_0_3_BIT_CONFORM_FILENAME does not exist
-                let jsonschema_file = DidLogJsonSchemaEmbedFolder::get(
-                    Self::DID_LOG_ENTRY_JSONSCHEMA_V_0_3_EID_CONFORM_FILENAME,
-                )
-                .unwrap();
-                // CAUTION This (i.e. unwrap() call) will panic only if file denoted by DID_LOG_ENTRY_JSONSCHEMA_V_0_3_BIT_CONFORM_FILENAME is not UTF-8
-                from_utf8(jsonschema_file.data.as_ref())
-                    .unwrap()
-                    .to_string()
-            }
-        }
+        let file_name = match self {
+            // CAUTION This (i.e. unwrap() call) will panic only if file denoted by DID_LOG_ENTRY_JSONSCHEMA_V_0_3_FILENAME does not exist
+            Self::V03 => Self::DID_LOG_ENTRY_JSONSCHEMA_V_0_3_FILENAME,
+            Self::V03EidConform => Self::DID_LOG_ENTRY_JSONSCHEMA_V_0_3_EID_CONFORM_FILENAME,
+            Self::V1_0 => Self::DID_LOG_ENTRY_JSONSCHEMA_V_1_0_FILENAME,
+            Self::V1_0EidConform => Self::DID_LOG_ENTRY_JSONSCHEMA_V_1_0_EID_CONFORM_FILENAME,
+        };
+        let schema_file = DidLogJsonSchemaEmbedFolder::get(file_name).unwrap();
+        // CAUTION This (i.e. unwrap() call) will panic only if file denoted by schema_file is not UTF-8
+        from_utf8(schema_file.data.as_ref()).unwrap().to_string()
     }
 }
 
@@ -74,10 +73,11 @@ mod test {
     use serde_json::{json, Value};
 
     #[rstest]
+    // TODO add V1.0 test cases
     // CAUTION V03-specific (happy path) case
     #[case(vec!(DidLogEntryJsonSchema::V03), json!([
         "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
-        "2012-12-12T12:12:12Z", 
+        "2012-12-12T12:12:12Z",
         {
             "method": "did:tdw:0.3",
             "scid": "QmZ5tnGo1fHNEzHDpG2Bx5dmT3eGNmBY9QATtm6DrFMzcH",
@@ -93,7 +93,7 @@ mod test {
             "deactivated": false
         },
         {"value": {
-            "id": "did:tdw:QmZ5tnGo1fHNEzHDpG2Bx5dmT3eGNmBY9QATtm6DrFMzcH:example.com", 
+            "id": "did:tdw:QmZ5tnGo1fHNEzHDpG2Bx5dmT3eGNmBY9QATtm6DrFMzcH:example.com",
             "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/jwk/v1"],
             "controller": "did:tdw:QmZ5tnGo1fHNEzHDpG2Bx5dmT3eGNmBY9QATtm6DrFMzcH:example.com",
             "verificationMethod": [{
@@ -160,9 +160,9 @@ mod test {
             "challenge": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR"
         }],]), true, "")]
     #[case(vec!(DidLogEntryJsonSchema::V03, DidLogEntryJsonSchema::V03EidConform), json!([
-        "invalid-version-id", 
+        "invalid-version-id",
         "2012-12-12T12:12:12Z",
-        {"method": "did:tdw:0.3"}, 
+        {"method": "did:tdw:0.3"},
         {"value": {}},
         [{
             "created": "2012-12-12T12:12:12Z",

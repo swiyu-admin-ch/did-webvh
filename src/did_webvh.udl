@@ -109,4 +109,6 @@ enum DidLogEntryJsonSchema {
     "V03EidConform",
     /// As (strictly) specified by https://identity.foundation/didwebvh/v0.3
     "V03",
+	 "V1_0EidConform",
+	 "V1_0",
 };
