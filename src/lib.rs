@@ -9,32 +9,32 @@
 extern crate core;
 
 pub mod did_webvh;
+pub mod did_webvh_jsonschema;
 pub mod did_webvh_parameters;
 pub mod errors;
-pub mod did_webvh_jsonschema;
 
 // CAUTION All structs required by UniFFI bindings generator (declared in UDL) MUST also be "used" here
-use did_webvh::*;
 use did_sidekicks::did_doc::*;
-use did_sidekicks::ed25519::*;
 use did_sidekicks::did_jsonschema::*;
+use did_sidekicks::ed25519::*;
+use did_webvh::*;
 //use did_sidekicks::vc_data_integrity;
-use errors::*;
 use did_webvh_jsonschema::*;
+use errors::*;
 
 uniffi::include_scaffolding!("did_webvh");
 
 #[cfg(test)]
 mod test {
     use super::did_webvh::*;
+    use crate::errors::*;
+    use chrono::DateTime;
+    use core::panic;
     use did_sidekicks::did_doc::*;
     use did_sidekicks::ed25519::*;
     use did_sidekicks::jcs_sha256_hasher::*;
     use did_sidekicks::multibase::*;
-    use crate::errors::*;
     use did_sidekicks::vc_data_integrity::*;
-    use chrono::DateTime;
-    use core::panic;
     use hex::encode as hex_encode;
     use rand::distributions::Alphanumeric;
     use rand::Rng;
@@ -89,7 +89,10 @@ mod test {
         "did:webvh:QMySCID:localhost%3A8000",
         "https://localhost:8000/.well-known/did.jsonl"
     )]
-    #[case("did:webvh:QMySCID:localhost", "https://localhost/.well-known/did.jsonl")]
+    #[case(
+        "did:webvh:QMySCID:localhost",
+        "https://localhost/.well-known/did.jsonl"
+    )]
     #[case(
         "did:webvh:QMySCID:admin.ch%3A8000:123:456",
         "https://admin.ch:8000/123/456/did.jsonl"
@@ -156,41 +159,41 @@ mod test {
             ),
         }
     }
-//
-//    #[rstest]
-//    fn test_key_pair_multibase_conversion(
-//        ed25519_key_pair: &Ed25519KeyPair, // fixture
-//    ) -> Result<(), Box<dyn std::error::Error>> {
-//        let original_private = ed25519_key_pair.get_signing_key();
-//        let original_public = ed25519_key_pair.get_verifying_key();
-//
-//        let new_private = Ed25519SigningKey::from_multibase(&original_private.to_multibase())?;
-//        let new_public = Ed25519VerifyingKey::from_multibase(&original_public.to_multibase())?;
-//
-//        assert_eq!(original_private.to_multibase(), new_private.to_multibase());
-//        assert_eq!(original_public.to_multibase(), new_public.to_multibase());
-//        Ok(())
-//    }
-//
-//    #[rstest]
-//    fn test_key_pair_creation_from_multibase(
-//        ed25519_key_pair: &Ed25519KeyPair, // fixture
-//    ) -> Result<(), Box<dyn std::error::Error>> {
-//        let new_ed25519_key_pair =
-//            Ed25519KeyPair::from(&ed25519_key_pair.get_signing_key().to_multibase())?;
-//
-//        assert_eq!(ed25519_key_pair, &new_ed25519_key_pair);
-//        assert_eq!(
-//            ed25519_key_pair.get_signing_key().to_multibase(),
-//            new_ed25519_key_pair.signing_key.to_multibase()
-//        );
-//        assert_eq!(
-//            ed25519_key_pair.get_verifying_key().to_multibase(),
-//            new_ed25519_key_pair.verifying_key.to_multibase()
-//        );
-//        Ok(())
-//    }
-//
+    //
+    //    #[rstest]
+    //    fn test_key_pair_multibase_conversion(
+    //        ed25519_key_pair: &Ed25519KeyPair, // fixture
+    //    ) -> Result<(), Box<dyn std::error::Error>> {
+    //        let original_private = ed25519_key_pair.get_signing_key();
+    //        let original_public = ed25519_key_pair.get_verifying_key();
+    //
+    //        let new_private = Ed25519SigningKey::from_multibase(&original_private.to_multibase())?;
+    //        let new_public = Ed25519VerifyingKey::from_multibase(&original_public.to_multibase())?;
+    //
+    //        assert_eq!(original_private.to_multibase(), new_private.to_multibase());
+    //        assert_eq!(original_public.to_multibase(), new_public.to_multibase());
+    //        Ok(())
+    //    }
+    //
+    //    #[rstest]
+    //    fn test_key_pair_creation_from_multibase(
+    //        ed25519_key_pair: &Ed25519KeyPair, // fixture
+    //    ) -> Result<(), Box<dyn std::error::Error>> {
+    //        let new_ed25519_key_pair =
+    //            Ed25519KeyPair::from(&ed25519_key_pair.get_signing_key().to_multibase())?;
+    //
+    //        assert_eq!(ed25519_key_pair, &new_ed25519_key_pair);
+    //        assert_eq!(
+    //            ed25519_key_pair.get_signing_key().to_multibase(),
+    //            new_ed25519_key_pair.signing_key.to_multibase()
+    //        );
+    //        assert_eq!(
+    //            ed25519_key_pair.get_verifying_key().to_multibase(),
+    //            new_ed25519_key_pair.verifying_key.to_multibase()
+    //        );
+    //        Ok(())
+    //    }
+    //
     /// A rather trivial assertion helper around TrustDidWebError.
     pub fn assert_trust_did_web_error<T>(
         res: Result<T, TrustDidWebError>,
@@ -313,9 +316,17 @@ mod test {
     }
     */
 
-    /* TODO update tests to V1.0
     #[rstest]
-    /* TODO cleanup and add more test cases 
+    #[case(
+        "test_data/manually_created/single_update_key.jsonl",
+        "did:webvh:QmYPmKXuvwHeVF8zWdcMvU3UNksUZnR5kUJbhDjEjbZYvX:example.com"
+    )]
+    #[case(
+        "test_data/manually_created/2_log_entries.jsonl",
+        "did:webvh:QmYPmKXuvwHeVF8zWdcMvU3UNksUZnR5kUJbhDjEjbZYvX:example.com"
+    )]
+    /* TODO update tests to V1.0
+    /* TODO cleanup and add more test cases
     #[case(
         "test_data/generated_by_tdw_js/single_update_key.jsonl",
         "did:tdw:QmXjp5qhSEvm8oXip43cDX62hZhHZdAMYv7Magy1tkffSz:example.com"
@@ -369,6 +380,7 @@ mod test {
         "test_data/generated_by_didtoolbox_java/v400_did.jsonl",
         "did:tdw:QmPsui8ffosRTxUBP8vJoejauqEUGvhmWe77BNo1StgLk7:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
     )]
+    */
     fn test_read_did_webvh(
         #[case] did_log_raw_filepath: String,
         #[case] did_url: String,
@@ -398,7 +410,6 @@ mod test {
 
         Ok(())
     }
-    */
 
     /* TODO implement the test case using proper input
     #[rstest]

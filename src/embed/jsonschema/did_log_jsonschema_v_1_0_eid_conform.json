@@ -292,8 +292,7 @@
           "verificationMethod",
           "created",
           "proofPurpose",
-          "proofValue",
-          "challenge"
+          "proofValue"
         ],
         "additionalProperties": false
       }

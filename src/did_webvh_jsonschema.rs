@@ -2,7 +2,6 @@
 
 use std::str::from_utf8;
 
-use did_sidekicks::did_jsonschema::*;
 use rust_embed::Embed;
 
 #[derive(Embed)]
@@ -66,9 +65,8 @@ impl DidLogEntryJsonSchema {
 
 #[cfg(test)]
 mod test {
-    use crate::did_webvh_jsonschema::{
-        DidLogEntryJsonSchema, DidLogEntryValidator, DidLogEntryValidatorErrorKind,
-    };
+    use crate::did_webvh_jsonschema::DidLogEntryJsonSchema;
+    use did_sidekicks::did_jsonschema::{DidLogEntryValidator, DidLogEntryValidatorErrorKind};
     use rstest::rstest;
     use serde_json::{json, Value};
 

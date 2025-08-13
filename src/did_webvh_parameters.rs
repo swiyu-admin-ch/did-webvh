@@ -281,8 +281,7 @@ fn is_zero(num: &u32) -> bool {
     *num == 0
 }
 
-/// As defined by https://identity.foundation/trustdidweb/v0.3/#didtdw-did-method-parameters //
-/// TODO@MP dead link
+/// As defined by https://identity.foundation/didwebvh/v1.0/#didwebvh-did-method-parameters
 const DID_METHOD_PARAMETER_VERSION: &str = "did:webvh:1.0";
 
 #[cfg(test)]
@@ -496,6 +495,5 @@ mod test {
             TrustDidWebErrorKind::InvalidDidParameter,
             "Unsupported 'portable' DID parameter.",
         );
-
     }
 }
