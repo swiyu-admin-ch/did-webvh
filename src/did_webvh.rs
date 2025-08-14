@@ -50,7 +50,10 @@ pub struct DidLogEntry {
     pub parameters: DidMethodParameters,
 
     #[serde(rename = "state")]
-    pub did: DidWrapper,
+    pub did: DidDoc,
+
+    #[serde(skip)]
+    pub did_json: JsonValue,
 
     #[serde(rename = "proof")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -124,24 +127,6 @@ impl<'de> de::Visitor<'de> for DidLogVersionVisitor {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct DidWrapper {
-    pub doc: DidDoc,
-    pub json: String,
-    pub hash: String,
-}
-
-impl Serialize for DidWrapper {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let oeu: JsonValue = serde_json::from_str(&self.json).unwrap();
-        oeu.serialize(serializer)
-        //self.doc.serialize(serializer)
-    }
-}
-
 impl DidLogEntry {
     #[allow(clippy::too_many_arguments)]
     /// Import of existing log entry
@@ -150,8 +135,7 @@ impl DidLogEntry {
         version_time: DateTime<Utc>,
         parameters: DidMethodParameters,
         did_doc: DidDoc,
-        did_doc_json: String,
-        did_doc_hash: String,
+        did_doc_json: JsonValue,
         proof: DataIntegrityProof,
         prev_entry: Option<Arc<DidLogEntry>>,
     ) -> Self {
@@ -159,11 +143,8 @@ impl DidLogEntry {
             version,
             version_time,
             parameters,
-            did: DidWrapper {
-                doc: did_doc,
-                json: did_doc_json,
-                hash: did_doc_hash,
-            },
+            did: did_doc,
+            did_json: did_doc_json,
             proof: Some(vec![proof]),
             prev_entry,
         }
@@ -234,6 +215,7 @@ impl DidLogEntry {
                         version_time: self.version_time,
                         parameters: self.parameters.clone(),
                         did: self.did.clone(),
+                        did_json: self.did_json.clone(),
                         proof: None,
                         prev_entry: None,
                     }
@@ -278,6 +260,7 @@ impl DidLogEntry {
             version_time: self.version_time,
             parameters: self.parameters.clone(),
             did: self.did.clone(),
+            did_json: self.did_json.clone(),
             proof: None,
             prev_entry: None,
         };
@@ -321,7 +304,6 @@ impl DidLogEntry {
                     }
                 };
 
-                //Ok(Ed25519VerifyingKey::from_multibase(update_key.as_str())?)
                 Ok(verifying_key)
             }
             None => {
@@ -339,10 +321,13 @@ impl DidLogEntry {
     }
 
     fn to_log_entry_line(&self) -> Result<JsonValue, TrustDidWebError> {
+        /*
         let did_doc_json_value: JsonValue = match serde_json::from_str(&self.did.json) {
             Ok(v) => v,
             Err(err) => return Err(TrustDidWebError::DeserializationFailed(format!("{err}"))),
         };
+*/ // TODO@MP
+        let did_doc_json_value = self.did_json.clone();
 
         let version_time = self
             .version_time
@@ -378,11 +363,13 @@ impl DidLogEntry {
     }
 
     fn build_original_scid(&self, scid: &String) -> serde_json::Result<String> {
+        let did_doc_with_placeholder_scid = str::replace(self.did_json.to_string().as_str(), scid, SCID_PLACEHOLDER);
+        
         let entry_with_placeholder_without_proof = json!({
            DID_LOG_ENTRY_VERSION_ID: SCID_PLACEHOLDER,
            DID_LOG_ENTRY_VERSION_TIME: self.version_time,
            DID_LOG_ENTRY_PARAMETERS: json_from_str::<JsonValue>(str::replace(json_to_string(&self.parameters)?.as_str(), scid, SCID_PLACEHOLDER).as_str())?,
-           DID_LOG_ENTRY_STATE : json_from_str::<JsonValue>(str::replace(&self.did.json, scid, SCID_PLACEHOLDER).as_str())?,
+           DID_LOG_ENTRY_STATE : json_from_str::<JsonValue>(did_doc_with_placeholder_scid.as_str())?,
         });
 
         let hash = JcsSha256Hasher::default()
@@ -520,9 +507,6 @@ impl DidDocumentState {
                         }
                     }
 
-                    let did_doc_hash: String;
-                    let did_doc_json: String;
-
                     let did_doc_value = entry[DID_LOG_ENTRY_STATE].to_owned();
                     let current_did_doc: DidDoc = match did_doc_value {
                         JsonObject(_) => {
@@ -532,18 +516,12 @@ impl DidDocumentState {
                                 ));
                             }
 
-                            did_doc_json = entry[DID_LOG_ENTRY_STATE].to_string();
-                            did_doc_hash = match JcsSha256Hasher::default().encode_hex(&did_doc_value) {
-                                Ok(did_doc_hash_value) => did_doc_hash_value,
-                                Err(err) => return Err(TrustDidWebError::DeserializationFailed(
-                                    format!("Deserialization of DID document failed due to: {err}")
-                                ))
-                            };
+                            let json = entry[DID_LOG_ENTRY_STATE].to_string();
 
-                            match serde_json::from_str::<DidDoc>(&did_doc_json) {
+                            match serde_json::from_str::<DidDoc>(&json) {
                                 Ok(did_doc) => did_doc,
                                 Err(_) => {
-                                    match serde_json::from_str::<DidDocNormalized>(&did_doc_json) {
+                                    match serde_json::from_str::<DidDocNormalized>(&json) {
                                         Ok(did_doc_alt) => {
                                             match did_doc_alt.to_did_doc() {
                                                 Ok(doc) => doc,
@@ -584,9 +562,8 @@ impl DidDocumentState {
                         version,
                         version_time,
                         parameters,
-                        current_did_doc.clone(),
-                        did_doc_json.clone(),
-                        did_doc_hash.clone(),
+                        current_did_doc,
+                        did_doc_value,
                         proof,
                         prev_entry.clone(),
                     );
@@ -658,7 +635,7 @@ impl DidDocumentState {
         }
 
         match self.did_log_entries.last() {
-            Some(entry) => Ok(entry.clone().did.doc.into()),
+            Some(entry) => Ok(entry.clone().did.into()),
             None => Err(TrustDidWebError::InvalidDataIntegrityProof(
                 "Invalid did log. No entries found".to_string(),
             )),
@@ -866,7 +843,6 @@ impl TryFrom<(String, Option<bool>)> for TrustDidWebId {
     }
 }
 
-/// TODO@MP Doc comments missing
 pub struct TrustDidWeb {
     did: String,
     did_log: String,
@@ -922,22 +898,11 @@ impl TrustDidWeb {
 #[cfg(test)]
 mod test {
     use crate::did_webvh::{DidDocumentState, TrustDidWeb};
-    use crate::did_webvh_parameters::DidMethodParameters;
     use crate::errors::TrustDidWebErrorKind;
     use crate::test::assert_trust_did_web_error;
     use rstest::rstest;
-    use serde_json::json;
     use std::fs;
     use std::path::Path;
-
-    /// A rather trivial unit testing helper.
-    fn build_valid_params_json_string() -> String {
-        json!(DidMethodParameters::for_genesis_did_doc(
-            "123".to_string(),
-            "123".to_string()
-        ))
-        .to_string()
-    }
 
     #[rstest]
     // doc needs to be an object
@@ -992,7 +957,7 @@ mod test {
     )]
     // empty parameters
     #[case(
-        r#"{"versionId":"1-Qhashhashhashhashhashhashhashhashhashhashhashhash","versionTime":"2025-04-29T17:15:59Z", "parameters":{}, "state":{"@context":["https://www.w3.org/ns/did/v1", "https://w3id.org/security/jwk/v1"], "id":"did:webvh:QmQyDxVnosYTzHAMbzYDRZkVrD32ea9Sr2XNs8NkgMB5mn:domain.example"} }"#,
+        r#"{"versionId":"1-Qhashhashhashhashhashhashhashhashhashhashhashhash","versionTime":"2025-04-29T17:15:59Z", "parameters":{}, "state":{"@context":["https://www.w3.org/ns/did/v1", "https://w3id.org/security/jwk/v1"], "id":"did:webvh:QmQyDxVnosYTzHAMbzYDRZkVrD32ea9Sr2XNs8NkgMB5mn:domain.example"}, "proof": [ { "type": "DataIntegrityProof", "cryptosuite": "eddsa-jcs-2022", "created": "2025-08-13T05:43:17Z", "verificationMethod": "did:key:z6MkkkjG6shmZk6D2ghgDbpJQHD4xvpZhzYiWSLKDeznibiJ#z6MkkkjG6shmZk6D2ghgDbpJQHD4xvpZhzYiWSLKDeznibiJ", "proofPurpose": "assertionMethod", "proofValue": "z3L7j2siRiZ4zziQQmRqLY5qH2RfVz6VTC5gbDE6vntw1De5Ej5DNR3wDU6m9KRiUYPm9o8P89yMzNk5EhWVTo4Tn" } ] }"#,
         "Missing DID Document parameters"
     )]
     #[case(

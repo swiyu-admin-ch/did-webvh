@@ -103,12 +103,10 @@ interface DidDocumentState {
 ///
 /// # CAUTION The single currently supported `didwebvh` specification version is: v0.3
 enum DidLogEntryJsonSchema {
-    /// As defined by https://identity.foundation/didwebvh/v0.3 but w.r.t. (eID-conformity) addendum:
-    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check
-    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Doc+Conformity+Check
-    "V03EidConform",
-    /// As (strictly) specified by https://identity.foundation/didwebvh/v0.3
-    "V03",
+    /// As defined by https://identity.foundation/didwebvh/v1.0 but w.r.t. (eID-conformity) addendum:
+    /// - https://confluence.bit.admin.ch/x/r_0EMw (DID Log Conformity Check)
+    /// - https://confluence.bit.admin.ch/x/3e0EMw (DID Doc Conformity Check)
 	 "V1_0EidConform",
+    /// As (strictly) specified by https://identity.foundation/didwebvh/v1.0
 	 "V1_0",
 };

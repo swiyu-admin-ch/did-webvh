@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DID log entry schema v1.0 (e-ID-conform)",
   "type": "object",
-  "$comment": "As specified by https://identity.foundation/didwebvh/v0.3/#the-did-log-file w.r.t. to e-ID conformity",
+  "$comment": "As specified by https://identity.foundation/didwebvh/v1.0/#the-did-log-file w.r.t. to e-ID conformity",
   "properties": {
     "versionId": {
       "type": "string",
@@ -48,7 +48,7 @@
           "properties": {
             "threshold": {
               "type": "integer",
-              "minimum": 1,
+              "minimum": 0,
               "$comment": "An integer that must be attained or surpassed by the count of the witnesses for a DID log entry to be considered approved. threshold MUST be between 1 and the number of items in the witnesses array, inclusive."
             },
             "witnesses": {
@@ -93,24 +93,9 @@
       "properties": {
         "@context": {
           "anyOf": [
-            {
-              "const": [
-                "https://www.w3.org/ns/did/v1",
-                "https://w3id.org/security/jwk/v1"
-              ]
-            },
-            {
-              "const": [
-                "https://www.w3.org/ns/did/v1",
-                "https://w3id.org/security/multikey/v1"
-              ]
-            },
-            {
-              "const": [
-                "https://www.w3.org/ns/did/v1",
-                "https://w3id.org/security/suites/jws-2020/v1"
-              ]
-            }
+            { "const": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/jwk/v1" ] },
+            { "const": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1" ] },
+            { "const": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/suites/jws-2020/v1" ] }
           ],
           "$comment": "The @context property is used to ensure that implementations are using the same semantics when terms in this specification are processed. CAUTION (e-ID conformity): The last two array element left for the sake of backward compatibility with (deprecated) didtoolbox-java v1.0.0-RC1 and v1.0.0."
         },
@@ -302,7 +287,8 @@
     "versionId",
     "versionTime",
     "parameters",
-    "state"
+    "state",
+    "proof"
   ],
   "additionalItems": false
 }
