@@ -39,7 +39,7 @@
           "$comment": "An array of strings that are hashes of multikey formatted public keys that MAY be added to the updateKeys list in the log entry of a future version of the DID.",
           "items": {
             "type": "string",
-            "pattern": "^z[1-9a-zA-NP-Z]{47,}$"
+            "pattern": "^Q[1-9a-zA-NP-Z]{45,}$"
           }
         },
         "witness": {
@@ -93,6 +93,11 @@
       "properties": {
         "@context": {
           "anyOf": [
+            {
+              "const": [
+                "https://www.w3.org/ns/did/v1"
+              ]
+            },
             {
               "const": [
                 "https://www.w3.org/ns/did/v1",
@@ -319,8 +324,7 @@
           "verificationMethod",
           "created",
           "proofPurpose",
-          "proofValue",
-          "challenge"
+          "proofValue"
         ],
         "additionalProperties": false
       }

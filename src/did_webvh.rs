@@ -50,10 +50,10 @@ pub struct DidLogEntry {
     pub parameters: DidMethodParameters,
 
     #[serde(rename = "state")]
-    pub did: DidDoc,
+    pub did_doc: DidDoc,
 
     #[serde(skip)]
-    pub did_json: JsonValue,
+    pub did_doc_json: JsonValue,
 
     #[serde(rename = "proof")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -71,19 +71,7 @@ pub struct DidLogVersion {
 }
 
 impl DidLogVersion {
-    // TODO@MP better comment ala will panic when str not checked beforehand!
-    fn new(version_id: &str) -> Self {
-        // Since v0.2 (see https://identity.foundation/didwebvh/v1.0/#didwebvh-version-changelog):
-        // The new versionId takes the form <versionNumber>-<entryHash>, where <version number> is the incrementing integer of version of the entry: 1, 2, 3, etc.
-        let id = version_id.to_string();
-        let (index, hash) = id
-            .split_once("-")
-            .map(|(index, hash)| (index.parse::<usize>().unwrap(), hash.to_string())) // no panic is expected here...
-            .unwrap();
-        Self { id, index, hash }
-    }
-
-    fn new_with_raw_version_id(hash: &str) -> Self {
+    fn new(hash: &str) -> Self {
         Self {
             id: hash.to_string(),
             index: 0,
@@ -123,7 +111,12 @@ impl<'de> de::Visitor<'de> for DidLogVersionVisitor {
     where
         E: de::Error,
     {
-        Ok(Self::Value::new(cmd_str))
+        let id = cmd_str.to_string();
+        let (index, hash) = id
+            .split_once("-")
+            .map(|(index, hash)| (index.parse::<usize>().unwrap(), hash.to_string())) // no panic is expected here...
+            .unwrap();
+        Ok(Self::Value { id, index, hash })
     }
 }
 
@@ -143,8 +136,8 @@ impl DidLogEntry {
             version,
             version_time,
             parameters,
-            did: did_doc,
-            did_json: did_doc_json,
+            did_doc,
+            did_doc_json,
             proof: Some(vec![proof]),
             prev_entry,
         }
@@ -214,8 +207,8 @@ impl DidLogEntry {
                         version: self.version.clone(),
                         version_time: self.version_time,
                         parameters: self.parameters.clone(),
-                        did: self.did.clone(),
-                        did_json: self.did_json.clone(),
+                        did_doc: self.did_doc.clone(),
+                        did_doc_json: self.did_doc_json.clone(),
                         proof: None,
                         prev_entry: None,
                     }
@@ -256,11 +249,11 @@ impl DidLogEntry {
         };
         // 4. remove Data Integrity proof from the log entry
         let entry = DidLogEntry {
-            version: DidLogVersion::new_with_raw_version_id(&prev_version_id),
+            version: DidLogVersion::new(&prev_version_id),
             version_time: self.version_time,
             parameters: self.parameters.clone(),
-            did: self.did.clone(),
-            did_json: self.did_json.clone(),
+            did_doc: self.did_doc.clone(),
+            did_doc_json: self.did_doc_json.clone(),
             proof: None,
             prev_entry: None,
         };
@@ -321,13 +314,7 @@ impl DidLogEntry {
     }
 
     fn to_log_entry_line(&self) -> Result<JsonValue, TrustDidWebError> {
-        /*
-        let did_doc_json_value: JsonValue = match serde_json::from_str(&self.did.json) {
-            Ok(v) => v,
-            Err(err) => return Err(TrustDidWebError::DeserializationFailed(format!("{err}"))),
-        };
-*/ // TODO@MP
-        let did_doc_json_value = self.did_json.clone();
+        let did_doc_json_value = self.did_doc_json.clone();
 
         let version_time = self
             .version_time
@@ -363,8 +350,12 @@ impl DidLogEntry {
     }
 
     fn build_original_scid(&self, scid: &String) -> serde_json::Result<String> {
-        let did_doc_with_placeholder_scid = str::replace(self.did_json.to_string().as_str(), scid, SCID_PLACEHOLDER);
-        
+        let did_doc_with_placeholder_scid = str::replace(
+            self.did_doc_json.to_string().as_str(),
+            scid,
+            SCID_PLACEHOLDER,
+        );
+
         let entry_with_placeholder_without_proof = json!({
            DID_LOG_ENTRY_VERSION_ID: SCID_PLACEHOLDER,
            DID_LOG_ENTRY_VERSION_TIME: self.version_time,
@@ -385,14 +376,6 @@ pub struct DidDocumentState {
 }
 
 impl DidDocumentState {
-    /*
-    pub(crate) fn default() -> Self {
-        DidDocumentState {
-            did_log_entries: Vec::new(),
-        }
-    }
-     */
-
     pub fn from(did_log: String) -> Result<Self, TrustDidWebError> {
         // CAUTION Despite parallelization, bear in mind that (according to benchmarks) the overall
         //         performance improvement will be considerable only in case of larger DID logs,
@@ -635,7 +618,7 @@ impl DidDocumentState {
         }
 
         match self.did_log_entries.last() {
-            Some(entry) => Ok(entry.clone().did.into()),
+            Some(entry) => Ok(entry.clone().did_doc.into()),
             None => Err(TrustDidWebError::InvalidDataIntegrityProof(
                 "Invalid did log. No entries found".to_string(),
             )),
