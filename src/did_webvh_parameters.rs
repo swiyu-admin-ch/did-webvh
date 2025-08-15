@@ -90,18 +90,18 @@ impl DidMethodParameters {
     ///
     /// Furthermore, the relevant Swiss profile checks are also taken into account here:
     /// https://github.com/e-id-admin/open-source-community/blob/main/tech-roadmap/swiss-profile.md#didtdwdidwebvh
-    pub fn validate_initial(&self) -> Result<(), TrustDidWebError> {
+    pub fn validate_initial(&self) -> Result<(), WebVerfiableHistoryError> {
         if let Some(method) = &self.method {
             // This item MAY appear in later DID log entries to indicate that the processing rules
             // for that and later entries have been changed to a different specification version.
             if method != DID_METHOD_PARAMETER_VERSION {
-                return Err(TrustDidWebError::InvalidDidParameter(format!(
+                return Err(WebVerfiableHistoryError::InvalidDidParameter(format!(
                     "Invalid 'method' DID parameter. Expected '{DID_METHOD_PARAMETER_VERSION}'"
                 )));
             }
         } else {
             // This item MUST appear in the first DID log entry.
-            return Err(TrustDidWebError::InvalidDidParameter(
+            return Err(WebVerfiableHistoryError::InvalidDidParameter(
                 "Missing 'method' DID parameter. This item MUST appear in the first DID log entry."
                     .to_string(),
             ));
@@ -109,12 +109,12 @@ impl DidMethodParameters {
 
         if let Some(scid) = &self.scid {
             if scid.is_empty() {
-                return Err(TrustDidWebError::InvalidDidParameter(
+                return Err(WebVerfiableHistoryError::InvalidDidParameter(
                     "Invalid 'scid' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
                 ));
             }
         } else {
-            return Err(TrustDidWebError::InvalidDidParameter(
+            return Err(WebVerfiableHistoryError::InvalidDidParameter(
                 "Missing 'scid' DID parameter. This item MUST appear in the first DID log entry."
                     .to_string(),
             ));
@@ -122,19 +122,19 @@ impl DidMethodParameters {
 
         if let Some(update_keys) = &self.update_keys {
             if update_keys.is_empty() {
-                return Err(TrustDidWebError::InvalidDidParameter(
+                return Err(WebVerfiableHistoryError::InvalidDidParameter(
                     "Empty 'updateKeys' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
                 ));
             }
         } else {
-            return Err(TrustDidWebError::InvalidDidParameter(
+            return Err(WebVerfiableHistoryError::InvalidDidParameter(
                 "Missing 'updateKeys' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
             ));
         }
 
         if let Some(next_keys) = &self.next_keys {
             if !next_keys.is_empty() {
-                return Err(TrustDidWebError::InvalidDidParameter(
+                return Err(WebVerfiableHistoryError::InvalidDidParameter(
                     "Unsupported non-empty 'nextKeyHashes' DID parameter.".to_string(),
                 ));
             }
@@ -144,7 +144,7 @@ impl DidMethodParameters {
             if witness.threshold > 0 || !witness.witnesses.is_empty() {
                 // A witness item in the first DID log entry is used to define the witnesses and necessary threshold for that initial log entry.
                 // In all other DID log entries, a witness item becomes active after the publication of its entry.
-                return Err(TrustDidWebError::InvalidDidParameter(
+                return Err(WebVerfiableHistoryError::InvalidDidParameter(
                     "Unsupported non-empty 'witness' DID parameter.".to_string(),
                 ));
             }
@@ -152,7 +152,7 @@ impl DidMethodParameters {
 
         if let Some(watchers) = &self.watchers {
             if !watchers.is_empty() {
-                return Err(TrustDidWebError::InvalidDidParameter(
+                return Err(WebVerfiableHistoryError::InvalidDidParameter(
                     "Unsupported non-empty 'watchers' DID parameter.".to_string(),
                 ));
             }
@@ -160,7 +160,7 @@ impl DidMethodParameters {
 
         if let Some(portable) = self.portable {
             if portable {
-                return Err(TrustDidWebError::InvalidDidParameter(
+                return Err(WebVerfiableHistoryError::InvalidDidParameter(
                     "Unsupported 'portable' DID parameter. We currently don't support portable dids".to_string(),
                 ));
             }
@@ -169,7 +169,7 @@ impl DidMethodParameters {
         Ok(())
     }
 
-    pub fn merge_from(&mut self, other: &DidMethodParameters) -> Result<(), TrustDidWebError> {
+    pub fn merge_from(&mut self, other: &DidMethodParameters) -> Result<(), WebVerfiableHistoryError> {
         let new_params = other.to_owned();
         let current_params = self.clone();
         self.method = match new_params.method {
@@ -177,7 +177,7 @@ impl DidMethodParameters {
                 // This item MAY appear in later DID log entries to indicate that the processing rules
                 // for that and later entries have been changed to a different specification version.
                 if method != DID_METHOD_PARAMETER_VERSION {
-                    return Err(TrustDidWebError::InvalidDidParameter(
+                    return Err(WebVerfiableHistoryError::InvalidDidParameter(
                         format!("Invalid 'method' DID parameter. Expected '{DID_METHOD_PARAMETER_VERSION}'.")
                     ));
                 }
@@ -189,7 +189,7 @@ impl DidMethodParameters {
         self.scid = match new_params.scid {
             Some(scid) => {
                 if current_params.scid.is_none_or(|x| x != scid) {
-                    return Err(TrustDidWebError::InvalidDidParameter(
+                    return Err(WebVerfiableHistoryError::InvalidDidParameter(
                         "Invalid 'scid' DID parameter. The 'scid' parameter is not allowed to change."
                         .to_string(),
                     ));
@@ -206,7 +206,7 @@ impl DidMethodParameters {
         self.witnesses = match new_params.witnesses {
             Some(witness) => {
                 if witness.threshold > 0 || !witness.witnesses.is_empty() {
-                    return Err(TrustDidWebError::InvalidDidParameter(
+                    return Err(WebVerfiableHistoryError::InvalidDidParameter(
                         "Unsupported non-empty 'witnesses' DID parameter.".to_string(),
                     ));
                 }
@@ -221,10 +221,10 @@ impl DidMethodParameters {
         self.watchers = new_params.watchers.or(current_params.watchers);
 
         self.portable = match (current_params.portable, new_params.portable) {
-            (Some(true), Some(true)) => return Err(TrustDidWebError::InvalidDidParameter(
+            (Some(true), Some(true)) => return Err(WebVerfiableHistoryError::InvalidDidParameter(
                 "Unsupported 'portable' DID parameter. We currently don't support portable dids".to_string(),
             )),
-            (_, Some(true)) =>  return Err(TrustDidWebError::InvalidDidParameter(
+            (_, Some(true)) =>  return Err(WebVerfiableHistoryError::InvalidDidParameter(
                 "Invalid 'portable' DID parameter. The value can ONLY be set to true in the first log entry, the initial version of the DID.".to_string(),
             )),
             (_, Some(false)) => Some(false),
@@ -233,7 +233,7 @@ impl DidMethodParameters {
         };
 
         self.deactivated = match (current_params.deactivated, new_params.deactivated) {
-            (Some(true), _) => return Err(TrustDidWebError::InvalidDidDocument(
+            (Some(true), _) => return Err(WebVerfiableHistoryError::InvalidDidDocument(
                 "This DID document is already deactivated. Therefore no additional DID logs are allowed.".to_string()
             )),
             (_, Some(deactivate)) => Some(deactivate),
@@ -251,11 +251,11 @@ impl DidMethodParameters {
         self.deactivated = Some(true);
     }
 
-    pub fn from_json(json_content: &str) -> Result<Self, TrustDidWebError> {
+    pub fn from_json(json_content: &str) -> Result<Self, WebVerfiableHistoryError> {
         let did_method_parameters: DidMethodParameters = match serde_json::from_str(json_content) {
             Ok(did_method_parameters) => did_method_parameters,
             Err(err) => {
-                return Err(TrustDidWebError::DeserializationFailed(format!(
+                return Err(WebVerfiableHistoryError::DeserializationFailed(format!(
                     "Error parsing DID method parameters: {err}"
                 )));
             }
@@ -287,7 +287,7 @@ const DID_METHOD_PARAMETER_VERSION: &str = "did:webvh:1.0";
 #[cfg(test)]
 mod test {
     use crate::did_webvh_parameters::{DidMethodParameters, Witness};
-    use crate::errors::TrustDidWebErrorKind;
+    use crate::errors::WebVerfiableHistoryErrorKind;
     use crate::test::assert_trust_did_web_error;
     use rstest::rstest;
 
@@ -303,13 +303,13 @@ mod test {
         params.method = Some("invalidVersion".to_string());
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Invalid 'method' DID parameter.",
         );
         params.method = None;
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Missing 'method' DID parameter.",
         );
 
@@ -318,13 +318,13 @@ mod test {
         params.scid = Some("".to_string());
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Invalid 'scid' DID parameter.",
         );
         params.scid = None;
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Missing 'scid' DID parameter.",
         );
 
@@ -333,13 +333,13 @@ mod test {
         params.update_keys = Some(vec![]);
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Empty 'updateKeys' DID parameter.",
         );
         params.update_keys = None;
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Missing 'updateKeys' DID parameter.",
         );
 
@@ -348,7 +348,7 @@ mod test {
         params.portable = Some(true);
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Unsupported 'portable' DID parameter",
         );
         params.portable = Some(false);
@@ -361,7 +361,7 @@ mod test {
         params.next_keys = Some(vec!["some_valid_key".to_string()]);
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Unsupported non-empty 'nextKeyHashes' DID parameter",
         );
         params.next_keys = Some(vec![]);
@@ -377,7 +377,7 @@ mod test {
         });
         assert_trust_did_web_error(
             params.validate_initial(),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Unsupported non-empty 'witness' DID parameter.",
         );
         params.witnesses = Some(Witness {
@@ -404,7 +404,7 @@ mod test {
         new_params.method = Some("invalidVersion".to_string());
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Invalid 'method' DID parameter.",
         );
         new_params.method = None;
@@ -416,7 +416,7 @@ mod test {
         new_params.scid = Some("otherSCID".to_string());
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Invalid 'scid' DID parameter.",
         );
         new_params.scid = None;
@@ -453,7 +453,7 @@ mod test {
         });
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Unsupported non-empty 'witnesses' DID parameter.",
         );
         new_params.witnesses = Some(Witness {
@@ -481,7 +481,7 @@ mod test {
         new_params.portable = Some(true);
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Invalid 'portable' DID parameter.",
         );
         new_params.portable = Some(false);
@@ -492,7 +492,7 @@ mod test {
         old_params.portable = Some(true);
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            TrustDidWebErrorKind::InvalidDidParameter,
+            WebVerfiableHistoryErrorKind::InvalidDidParameter,
             "Unsupported 'portable' DID parameter.",
         );
     }

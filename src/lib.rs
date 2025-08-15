@@ -113,7 +113,7 @@ mod test {
         "https://localhost/.hidden/did.jsonl"
     )]
     fn test_webvh_to_url_conversion(#[case] webvh: String, #[case] url: String) {
-        let webvh = TrustDidWebId::parse_did_webvh(webvh).unwrap();
+        let webvh = WebVerfiableHistoryId::parse_did_webvh(webvh).unwrap();
         let resolved_url = webvh.get_url();
         assert_eq!(resolved_url, url)
     }
@@ -123,14 +123,14 @@ mod test {
     #[case("did:tdw:QMySCID:localhost%3A8000:123:456")]
     #[case("url:webvh:QMySCID:localhost%3A8000:123:456")]
     fn test_webvh_to_url_conversion_error_kind_method_not_supported(#[case] webvh: String) {
-        match TrustDidWebId::parse_did_webvh(webvh) {
+        match WebVerfiableHistoryId::parse_did_webvh(webvh) {
             Err(e) => assert_eq!(
                 e.kind(),
-                TrustDidWebIdResolutionErrorKind::MethodNotSupported
+                WebVerfiableHistoryIdResolutionErrorKind::MethodNotSupported
             ),
             _ => panic!(
                 "Expected error kind: {:?}",
-                TrustDidWebIdResolutionErrorKind::MethodNotSupported
+                WebVerfiableHistoryIdResolutionErrorKind::MethodNotSupported
             ),
         }
     }
@@ -145,22 +145,22 @@ mod test {
     #[case("did:webvh:SCID::123:")] // no fully qualified domain
     #[case("did:webvh::localhost%3A8000:123:456")] // empty/missing SCID
     fn test_webvh_to_url_conversion_error_kind_invalid_method_specific_id(#[case] webvh: String) {
-        match TrustDidWebId::parse_did_webvh(webvh) {
+        match WebVerfiableHistoryId::parse_did_webvh(webvh) {
             Err(e) => assert_eq!(
                 e.kind(),
-                TrustDidWebIdResolutionErrorKind::InvalidMethodSpecificId
+                WebVerfiableHistoryIdResolutionErrorKind::InvalidMethodSpecificId
             ),
             _ => panic!(
                 "Expected error kind: {:?}",
-                TrustDidWebIdResolutionErrorKind::InvalidMethodSpecificId
+                WebVerfiableHistoryIdResolutionErrorKind::InvalidMethodSpecificId
             ),
         }
     }
 
-    /// A rather trivial assertion helper around TrustDidWebError.
+    /// A rather trivial assertion helper around WebVerfiableHistoryError.
     pub fn assert_trust_did_web_error<T>(
-        res: Result<T, TrustDidWebError>,
-        expected_kind: TrustDidWebErrorKind,
+        res: Result<T, WebVerfiableHistoryError>,
+        expected_kind: WebVerfiableHistoryErrorKind,
         error_contains: &str,
     ) {
         assert!(res.is_err());
@@ -353,7 +353,7 @@ mod test {
         let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath))?;
 
         // Read the newly did doc
-        let webvh_v1 = TrustDidWeb::read(did_url.clone(), did_log_raw)?;
+        let webvh_v1 = WebVerfiableHistory::read(did_url.clone(), did_log_raw)?;
         let did_doc_v1: JsonValue = serde_json::from_str(&webvh_v1.get_did_doc())?;
         let did_doc_obj_v1 = DidDoc::from_json(&webvh_v1.get_did_doc())?;
 
