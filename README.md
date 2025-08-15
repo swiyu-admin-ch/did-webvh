@@ -11,12 +11,9 @@ as part of the electronic identity (e-ID) project.
 *Beware, this Rust library implements [DID Web + Verifiable History (did:webvh) v1.0 specification](https://identity.foundation/didwebvh/v1.0/)
 only partially while focusing solely on [DID resolution](https://identity.foundation/didwebvh/v1.0/#read-resolve).*
 
-Although the library is still required by [DID Resolver](https://github.com/swiyu-admin-ch/didresolver), it will be kept
-in the future as legacy and solely for the sake of backward compatibility, as [newer version of the specifications](https://identity.foundation/didwebvh/v1.0) is currently being implemented.
-
 ## Using the library
 
-The library can be used either directly in Rust as is.
+The library can be used directly in Rust as is.
 
 ### Rust
 
@@ -29,7 +26,7 @@ did_webvh = { git = "https://github.com/swiyu-admin-ch/did-webvh", branch = "mai
 
 ## Benchmarks
 
-All the relevant reports are available [here](criterion/README.md).
+All the relevant reports will be available [here](criterion/README.md).
 
 ## License
 

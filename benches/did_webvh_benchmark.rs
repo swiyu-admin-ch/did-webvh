@@ -48,7 +48,7 @@ pub fn criterion_benchmark_did_webvh(c: &mut Criterion) {
             b.iter(|| {
                 let did_log_raw_filepath = format!{"test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i};
                 let did_url =
-                    "did:tdw:QmPsui8ffosRTxUBP8vJoejauqEUGvhmWe77BNo1StgLk7:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085";
+                    "did:webvh:QmPsui8ffosRTxUBP8vJoejauqEUGvhmWe77BNo1StgLk7:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085";
 
                 let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
 
@@ -76,7 +76,7 @@ pub fn criterion_benchmark_did_webvh_jsonschema(c: &mut Criterion) {
         //.warm_up_time(Duration::from_secs(5))
     ;
 
-    let validator = DidLogEntryValidator::from(DidLogEntryJsonSchema::V03EidConform.as_schema());
+    let validator = DidLogEntryValidator::from(DidLogEntryJsonSchema::V1_0EidConform.as_schema());
 
     let function_name_base = "DidLogEntryValidator_validate";
 

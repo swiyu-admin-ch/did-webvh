@@ -112,9 +112,9 @@ mod test {
         "did:webvh:QMySCID:localhost:.hidden",
         "https://localhost/.hidden/did.jsonl"
     )]
-    fn test_tdw_to_url_conversion(#[case] tdw: String, #[case] url: String) {
-        let tdw = TrustDidWebId::parse_did_webvh(tdw).unwrap();
-        let resolved_url = tdw.get_url();
+    fn test_webvh_to_url_conversion(#[case] webvh: String, #[case] url: String) {
+        let webvh = TrustDidWebId::parse_did_webvh(webvh).unwrap();
+        let resolved_url = webvh.get_url();
         assert_eq!(resolved_url, url)
     }
 
@@ -122,8 +122,8 @@ mod test {
     #[case("did:xyz:QMySCID:localhost%3A8000:123:456")]
     #[case("did:tdw:QMySCID:localhost%3A8000:123:456")]
     #[case("url:webvh:QMySCID:localhost%3A8000:123:456")]
-    fn test_tdw_to_url_conversion_error_kind_method_not_supported(#[case] tdw: String) {
-        match TrustDidWebId::parse_did_webvh(tdw) {
+    fn test_webvh_to_url_conversion_error_kind_method_not_supported(#[case] webvh: String) {
+        match TrustDidWebId::parse_did_webvh(webvh) {
             Err(e) => assert_eq!(
                 e.kind(),
                 TrustDidWebIdResolutionErrorKind::MethodNotSupported
@@ -144,8 +144,8 @@ mod test {
     #[case("did:webvh:SCID:::")] // no fully qualified domain
     #[case("did:webvh:SCID::123:")] // no fully qualified domain
     #[case("did:webvh::localhost%3A8000:123:456")] // empty/missing SCID
-    fn test_tdw_to_url_conversion_error_kind_invalid_method_specific_id(#[case] tdw: String) {
-        match TrustDidWebId::parse_did_webvh(tdw) {
+    fn test_webvh_to_url_conversion_error_kind_invalid_method_specific_id(#[case] webvh: String) {
+        match TrustDidWebId::parse_did_webvh(webvh) {
             Err(e) => assert_eq!(
                 e.kind(),
                 TrustDidWebIdResolutionErrorKind::InvalidMethodSpecificId
@@ -284,6 +284,14 @@ mod test {
         "test_data/manually_created/2_log_entries.jsonl",
         "did:webvh:QmYPmKXuvwHeVF8zWdcMvU3UNksUZnR5kUJbhDjEjbZYvX:example.com"
     )]
+    #[case(
+        "test_data/generated_by_didtoolbox_java/single_update_key.jsonl",
+        "did:webvh:QmQqco6RKGLje7JdQpwsPsM5qyuVou9NmiHTs5S3dqu78a:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
+    )]
+    #[case(
+        "test_data/generated_by_didtoolbox_java/multiple_update_keys.jsonl",
+        "did:webvh:Qmdcnp8gJuuFhkh6JpyVCiywenKMzfUhwEhQ7GyhE428ud:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
+    )]
     /* TODO cleanup and add more test cases and migrate the below cases to v1.0
     #[case(
         "test_data/generated_by_tdw_js/single_update_key.jsonl",
@@ -363,7 +371,7 @@ mod test {
         assert_eq!(did_doc_obj_v1.id, webvh_v1.get_did());
         assert!(!did_doc_obj_v1.verification_method.is_empty());
         assert!(!did_doc_obj_v1.authentication.is_empty());
-        //assert!(!did_doc_v1_obj.controller.is_empty());
+        assert!(did_doc_obj_v1.controller.is_empty());
 
         Ok(())
     }
