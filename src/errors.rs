@@ -6,7 +6,7 @@
 ///
 /// Resembles ssi::dids::resolution::Error
 #[derive(Debug, thiserror::Error, PartialEq)]
-pub enum TrustDidWebIdResolutionError {
+pub enum WebVerfiableHistoryIdResolutionError {
     /// DID method is not supported by this resolver.
     #[error("DID method `{0}` not supported")]
     MethodNotSupported(String),
@@ -15,23 +15,25 @@ pub enum TrustDidWebIdResolutionError {
     InvalidMethodSpecificId(String),
 }
 
-impl TrustDidWebIdResolutionError {
+impl WebVerfiableHistoryIdResolutionError {
     /// Returns the error kind.
-    pub fn kind(&self) -> TrustDidWebIdResolutionErrorKind {
+    pub fn kind(&self) -> WebVerfiableHistoryIdResolutionErrorKind {
         match self {
-            Self::MethodNotSupported(_) => TrustDidWebIdResolutionErrorKind::MethodNotSupported,
+            Self::MethodNotSupported(_) => {
+                WebVerfiableHistoryIdResolutionErrorKind::MethodNotSupported
+            }
             Self::InvalidMethodSpecificId(_) => {
-                TrustDidWebIdResolutionErrorKind::InvalidMethodSpecificId
+                WebVerfiableHistoryIdResolutionErrorKind::InvalidMethodSpecificId
             }
         }
     }
 }
 
-/// TrustDidWebIdResolutionError kind.
+/// WebVerfiableHistoryIdResolutionError kind.
 ///
-/// Each [`TrustDidWebIdResolutionError`] has a kind provided by the [`TrustDidWebIdResolutionErrorKind::kind`] method.
+/// Each [`WebVerfiableHistoryIdResolutionError`] has a kind provided by the [`WebVerifiedHistoryIdResolutionErrorKind::kind`] method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum TrustDidWebIdResolutionErrorKind {
+pub enum WebVerfiableHistoryIdResolutionErrorKind {
     MethodNotSupported,
     InvalidMethodSpecificId,
 }
@@ -40,7 +42,7 @@ pub enum TrustDidWebIdResolutionErrorKind {
 ///
 /// Resembles ssi::dids::resolution::Error
 #[derive(Debug, thiserror::Error, PartialEq)]
-pub enum TrustDidWebError {
+pub enum WebVerfiableHistoryError {
     /// DID method is not supported by this resolver
     #[error("DID method `{0}` not supported")]
     MethodNotSupported(String),
@@ -68,27 +70,31 @@ pub enum TrustDidWebError {
     InvalidDataIntegrityProof(String),
 }
 
-impl TrustDidWebError {
+impl WebVerfiableHistoryError {
     /// Returns the error kind.
-    pub fn kind(&self) -> TrustDidWebErrorKind {
+    pub fn kind(&self) -> WebVerfiableHistoryErrorKind {
         match self {
-            Self::MethodNotSupported(_) => TrustDidWebErrorKind::MethodNotSupported,
-            Self::InvalidMethodSpecificId(_) => TrustDidWebErrorKind::InvalidMethodSpecificId,
-            Self::SerializationFailed(_) => TrustDidWebErrorKind::SerializationFailed,
-            Self::DeserializationFailed(_) => TrustDidWebErrorKind::DeserializationFailed,
-            Self::InvalidOperation(_) => TrustDidWebErrorKind::InvalidOperation,
-            Self::InvalidDidParameter(_) => TrustDidWebErrorKind::InvalidDidParameter,
-            Self::InvalidDidDocument(_) => TrustDidWebErrorKind::InvalidDidDocument,
-            Self::InvalidDataIntegrityProof(_) => TrustDidWebErrorKind::InvalidIntegrityProof,
+            Self::MethodNotSupported(_) => WebVerfiableHistoryErrorKind::MethodNotSupported,
+            Self::InvalidMethodSpecificId(_) => {
+                WebVerfiableHistoryErrorKind::InvalidMethodSpecificId
+            }
+            Self::SerializationFailed(_) => WebVerfiableHistoryErrorKind::SerializationFailed,
+            Self::DeserializationFailed(_) => WebVerfiableHistoryErrorKind::DeserializationFailed,
+            Self::InvalidOperation(_) => WebVerfiableHistoryErrorKind::InvalidOperation,
+            Self::InvalidDidParameter(_) => WebVerfiableHistoryErrorKind::InvalidDidParameter,
+            Self::InvalidDidDocument(_) => WebVerfiableHistoryErrorKind::InvalidDidDocument,
+            Self::InvalidDataIntegrityProof(_) => {
+                WebVerfiableHistoryErrorKind::InvalidIntegrityProof
+            }
         }
     }
 }
 
-/// TrustDidWebError kind.
+/// WebVerfiableHistoryError kind.
 ///
-/// Each [`TrustDidWebError`] has a kind provided by the [`TrustDidWebErrorKind::kind`] method.
+/// Each [`WebVerfiableHistorybError`] has a kind provided by the [`WebVerifiedHistoryErrorKind::kind`] method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum TrustDidWebErrorKind {
+pub enum WebVerfiableHistoryErrorKind {
     MethodNotSupported,
     InvalidMethodSpecificId,
     SerializationFailed,
