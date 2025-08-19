@@ -6,7 +6,7 @@
 ///
 /// Resembles ssi::dids::resolution::Error
 #[derive(Debug, thiserror::Error, PartialEq)]
-pub enum WebVerfiableHistoryIdResolutionError {
+pub enum WebVerifiableHistoryIdResolutionError {
     /// DID method is not supported by this resolver.
     #[error("DID method `{0}` not supported")]
     MethodNotSupported(String),
@@ -15,15 +15,15 @@ pub enum WebVerfiableHistoryIdResolutionError {
     InvalidMethodSpecificId(String),
 }
 
-impl WebVerfiableHistoryIdResolutionError {
+impl WebVerifiableHistoryIdResolutionError {
     /// Returns the error kind.
-    pub fn kind(&self) -> WebVerfiableHistoryIdResolutionErrorKind {
+    pub fn kind(&self) -> WebVerifiableHistoryIdResolutionErrorKind {
         match self {
             Self::MethodNotSupported(_) => {
-                WebVerfiableHistoryIdResolutionErrorKind::MethodNotSupported
+                WebVerifiableHistoryIdResolutionErrorKind::MethodNotSupported
             }
             Self::InvalidMethodSpecificId(_) => {
-                WebVerfiableHistoryIdResolutionErrorKind::InvalidMethodSpecificId
+                WebVerifiableHistoryIdResolutionErrorKind::InvalidMethodSpecificId
             }
         }
     }
@@ -31,9 +31,9 @@ impl WebVerfiableHistoryIdResolutionError {
 
 /// WebVerfiableHistoryIdResolutionError kind.
 ///
-/// Each [`WebVerfiableHistoryIdResolutionError`] has a kind provided by the [`WebVerifiedHistoryIdResolutionErrorKind::kind`] method.
+/// Each [`WebVerifiableHistoryIdResolutionError`] has a kind provided by the [`WebVerifiableHistoryIdResolutionErrorKind::kind`] method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum WebVerfiableHistoryIdResolutionErrorKind {
+pub enum WebVerifiableHistoryIdResolutionErrorKind {
     MethodNotSupported,
     InvalidMethodSpecificId,
 }
@@ -42,7 +42,7 @@ pub enum WebVerfiableHistoryIdResolutionErrorKind {
 ///
 /// Resembles ssi::dids::resolution::Error
 #[derive(Debug, thiserror::Error, PartialEq)]
-pub enum WebVerfiableHistoryError {
+pub enum WebVerifiableHistoryError {
     /// DID method is not supported by this resolver
     #[error("DID method `{0}` not supported")]
     MethodNotSupported(String),
@@ -70,21 +70,21 @@ pub enum WebVerfiableHistoryError {
     InvalidDataIntegrityProof(String),
 }
 
-impl WebVerfiableHistoryError {
+impl WebVerifiableHistoryError {
     /// Returns the error kind.
-    pub fn kind(&self) -> WebVerfiableHistoryErrorKind {
+    pub fn kind(&self) -> WebVerifiableHistoryErrorKind {
         match self {
-            Self::MethodNotSupported(_) => WebVerfiableHistoryErrorKind::MethodNotSupported,
+            Self::MethodNotSupported(_) => WebVerifiableHistoryErrorKind::MethodNotSupported,
             Self::InvalidMethodSpecificId(_) => {
-                WebVerfiableHistoryErrorKind::InvalidMethodSpecificId
+                WebVerifiableHistoryErrorKind::InvalidMethodSpecificId
             }
-            Self::SerializationFailed(_) => WebVerfiableHistoryErrorKind::SerializationFailed,
-            Self::DeserializationFailed(_) => WebVerfiableHistoryErrorKind::DeserializationFailed,
-            Self::InvalidOperation(_) => WebVerfiableHistoryErrorKind::InvalidOperation,
-            Self::InvalidDidParameter(_) => WebVerfiableHistoryErrorKind::InvalidDidParameter,
-            Self::InvalidDidDocument(_) => WebVerfiableHistoryErrorKind::InvalidDidDocument,
+            Self::SerializationFailed(_) => WebVerifiableHistoryErrorKind::SerializationFailed,
+            Self::DeserializationFailed(_) => WebVerifiableHistoryErrorKind::DeserializationFailed,
+            Self::InvalidOperation(_) => WebVerifiableHistoryErrorKind::InvalidOperation,
+            Self::InvalidDidParameter(_) => WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            Self::InvalidDidDocument(_) => WebVerifiableHistoryErrorKind::InvalidDidDocument,
             Self::InvalidDataIntegrityProof(_) => {
-                WebVerfiableHistoryErrorKind::InvalidIntegrityProof
+                WebVerifiableHistoryErrorKind::InvalidIntegrityProof
             }
         }
     }
@@ -94,7 +94,7 @@ impl WebVerfiableHistoryError {
 ///
 /// Each [`WebVerfiableHistorybError`] has a kind provided by the [`WebVerifiedHistoryErrorKind::kind`] method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum WebVerfiableHistoryErrorKind {
+pub enum WebVerifiableHistoryErrorKind {
     MethodNotSupported,
     InvalidMethodSpecificId,
     SerializationFailed,

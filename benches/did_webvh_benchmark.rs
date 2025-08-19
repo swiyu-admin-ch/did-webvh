@@ -2,7 +2,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use did_sidekicks::did_jsonschema::DidLogEntryValidator;
-use did_webvh::did_webvh::WebVerifiedHistory;
+use did_webvh::did_webvh::WebVerifiableHistory;
 use did_webvh::did_webvh_jsonschema::DidLogEntryJsonSchema;
 use rayon::prelude::*;
 use std::fs;
@@ -44,15 +44,15 @@ pub fn criterion_benchmark_did_webvh(c: &mut Criterion) {
     ;
 
     for i in inputs {
-        group.bench_function(BenchmarkId::new("WebVerifiedHistory_read", i), |b| {
+        group.bench_function(BenchmarkId::new("WebVerifiableHistory_read", i), |b| {
             b.iter(|| {
                 let did_log_raw_filepath = format!{"test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i};
                 let did_url =
-                    "did:webvh:QmPsui8ffosRTxUBP8vJoejauqEUGvhmWe77BNo1StgLk7:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085";
+                    "did:webvh:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085";
 
                 let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
 
-                if let Some(err) = WebVerifiedHistory::read(black_box(did_url.to_string()), black_box(did_log_raw)).err() {
+                if let Some(err) = WebVerifiableHistory::read(black_box(did_url.to_string()), black_box(did_log_raw)).err() {
                     panic!("{}", err.to_string());
                 }
             })

@@ -28,7 +28,8 @@ thiserror = "2.0.12"
 url = "2.5.4"
 rust-embed = { version = "8.7.2" , features = ["include-exclude", "compression"]}
 rayon = "1.10.0"
-did_sidekicks = { git = "https://github.com/swiyu-admin-ch/did-sidekicks.git", branch = "main" }
+# TODO Before releasing 1.0.0, replace 'branch = "feat/EIDOMNI-126"' with 'tag = "1.0.0"' (for did_sidekicks dep)
+did_sidekicks = { git = "https://github.com/swiyu-admin-ch/did-sidekicks.git", branch = "feat/EIDOMNI-126" }
 #did_sidekicks = { path = "../did-sidekicks" }
 
 [build-dependencies]
