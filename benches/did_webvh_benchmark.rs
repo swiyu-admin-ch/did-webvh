@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::hint::black_box;
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use did_sidekicks::did_jsonschema::{DidLogEntryJsonSchema, DidLogEntryValidator};
 use did_webvh::did_webvh::WebVerifiableHistory;
 use did_webvh::did_webvh_jsonschema::WebVerifiableHistoryDidLogEntryJsonSchema;
