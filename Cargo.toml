@@ -16,7 +16,7 @@ include = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-uniffi = { version = "0.28.3", features = ["cli"] }
+uniffi = { version = "0.29.4", features = ["cli"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140", features = ["preserve_order"] }
 chrono = { version = "0.4.41", features = ["serde"] }
@@ -33,7 +33,7 @@ did_sidekicks = { git = "https://github.com/swiyu-admin-ch/did-sidekicks.git", b
 #did_sidekicks = { path = "../did-sidekicks" }
 
 [build-dependencies]
-uniffi = { version = "0.28.3", features = ["build"] }
+uniffi = { version = "0.29.4", features = ["build"] }
 
 [dev-dependencies]
 rstest = "0.25.0"

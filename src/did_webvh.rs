@@ -393,7 +393,8 @@ impl DidDocumentState {
         // CAUTION Despite parallelization, bear in mind that (according to benchmarks) the overall
         //         performance improvement will be considerable only in case of larger DID logs,
         //         featuring at least as many entries as `std::thread::available_parallelism()` would return.
-        let sch: &dyn DidLogEntryJsonSchema = &WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform;
+        let sch: &dyn DidLogEntryJsonSchema =
+            &WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform;
         let validator = DidLogEntryValidator::from(sch);
         if let Some(err) = did_log
             .par_lines() // engage a parallel iterator (thanks to 'use rayon::prelude::*;' import)
@@ -576,7 +577,7 @@ impl DidDocumentState {
     pub fn validate_with_scid(
         &self,
         scid_to_validate: Option<String>,
-    ) -> Result<Arc<DidDoc>, WebVerifiableHistoryError> {
+    ) -> Result<DidDoc, WebVerifiableHistoryError> {
         let mut expected_version_index = 0;
         for entry in &self.did_log_entries {
             expected_version_index += 1;
@@ -635,7 +636,7 @@ impl DidDocumentState {
         }
 
         match self.did_log_entries.last() {
-            Some(entry) => Ok(entry.clone().did_doc.into()),
+            Some(entry) => Ok(entry.clone().did_doc),
             None => Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
                 "Invalid did log. No entries found".to_string(),
             )),
@@ -643,7 +644,7 @@ impl DidDocumentState {
     }
 
     /// Checks if all entries in the did log are valid (data integrity, versioning etc.)
-    pub fn validate(&self) -> Result<Arc<DidDoc>, WebVerifiableHistoryError> {
+    pub fn validate(&self) -> Result<DidDoc, WebVerifiableHistoryError> {
         self.validate_with_scid(None)
     }
 }
@@ -847,6 +848,14 @@ impl TryFrom<(String, Option<bool>)> for WebVerifiableHistoryId {
     }
 }
 
+/// The container for any *valid* `did:webvh` DID log in terms of the
+/// [*DID resolution*](https://identity.foundation/didwebvh/v1.0/#read-resolve).
+/// 
+/// Namely, the struct implements the
+/// [*Read (Resolve)* DID method operation for a `did:webvh` DID](https://identity.foundation/didwebvh/v1.0/#read-resolve)
+/// in its constructor.
+///
+/// A fully UniFFI-compliant struct.
 pub struct WebVerifiableHistory {
     did: String,
     did_log: String,
@@ -854,29 +863,46 @@ pub struct WebVerifiableHistory {
 }
 
 impl WebVerifiableHistory {
+    /// Delivers the fully qualified DID identifier (as [`String`]) of the DID log previously supplied via [`WebVerifiableHistory::read`] constructor.
+    ///
+    /// Yet another UniFFI-compliant method.
     pub fn get_did(&self) -> String {
         self.did.clone()
     }
 
+    /// Delivers the very same DID log (as [`String`]) previously supplied via [`WebVerifiableHistory::read`] constructor.
+    ///
+    /// Yet another UniFFI-compliant method.
     pub fn get_did_log(&self) -> String {
         self.did_log.clone()
     }
 
+    /// Delivers the fully qualified DID document (as [`String`]) contained within the DID log previously supplied via [`WebVerifiableHistory::read`] constructor.
+    ///
+    /// Yet another UniFFI-compliant method.
     pub fn get_did_doc(&self) -> String {
         self.did_doc.clone()
     }
 
+    /// Delivers the fully qualified DID document (as [`DidDoc`]) contained within the DID log previously supplied via [`WebVerifiableHistory::read`] constructor.
+    ///
     /// Yet another UniFFI-compliant method.
-    pub fn get_did_doc_obj(&self) -> Result<Arc<DidDoc>, WebVerifiableHistoryError> {
+    pub fn get_did_doc_obj(&self) -> Result<DidDoc, WebVerifiableHistoryError> {
         let did_doc_json = self.did_doc.clone();
         match json_from_str::<DidDoc>(&did_doc_json) {
-            Ok(doc) => Ok(doc.into()),
+            Ok(doc) => Ok(doc),
             Err(e) => Err(WebVerifiableHistoryError::DeserializationFailed(
                 e.to_string(),
             )),
         }
     }
 
+    /// The single constructor of [`WebVerifiableHistory`] implementing the
+    /// [*Read (Resolve)* DID method operation for a `did:webvh` DID](https://identity.foundation/didwebvh/v1.0/#read-resolve)
+    ///
+    /// In case of error, the available [`WebVerifiableHistoryError`] object features all the detailed
+    /// information required to narrow down the root cause.
+    ///
     /// A UniFFI-compliant constructor.
     pub fn read(did_webvh: String, did_log: String) -> Result<Self, WebVerifiableHistoryError> {
         // according to https://identity.foundation/didwebvh/v1.0/#read-resolve
@@ -888,7 +914,7 @@ impl WebVerifiableHistory {
         let scid = did.get_scid();
 
         let did_doc_arc = did_doc_state.validate_with_scid(Some(scid.to_owned()))?;
-        let did_doc = did_doc_arc.as_ref().clone();
+        let did_doc = did_doc_arc.clone();
         let did_doc_str = match serde_json::to_string(&did_doc) {
             Ok(v) => v,
             Err(e) => {

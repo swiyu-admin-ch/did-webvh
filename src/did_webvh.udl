@@ -3,25 +3,26 @@ namespace did_webvh {
 };
 
 [External="did_sidekicks"]
-typedef extern Jwk;
+typedef struct Jwk;
 
 [External="did_sidekicks"]
-typedef extern VerificationType;
+typedef enum VerificationType;
 
 [External="did_sidekicks"]
-typedef extern VerificationMethod;
+typedef struct VerificationMethod;
 
-[ExternalInterface="did_sidekicks"]
-typedef extern DidDoc;
+// Returned by `WebVerifiableHistory`'s method get_did_doc_obj
+[External="did_sidekicks"]
+typedef struct DidDoc;
 
-[ExternalInterface="did_sidekicks"]
-typedef extern DidLogEntryJsonSchema;
+[External="did_sidekicks"]
+typedef trait DidLogEntryJsonSchema;
 
-[ExternalInterface="did_sidekicks"]
-typedef extern DidLogEntryValidatorError;
+[External="did_sidekicks"]
+typedef enum DidLogEntryValidatorError;
 
-[ExternalInterface="did_sidekicks"]
-typedef extern DidLogEntryValidator;
+[External="did_sidekicks"]
+typedef struct DidLogEntryValidator;
 
 /// The error accompanying WebVerifiableHistoryId.
 /// It might occur while calling WebVerifiableHistoryId methods.
@@ -49,8 +50,8 @@ interface WebVerifiableHistoryId {
     string get_url();
 };
 
-/// The error accompanying WebVerifiableHistory.
-/// It might occur while calling WebVerifiableHistory methods.
+/// The error accompanying `WebVerifiableHistory`.
+/// It might occur while calling some of the `WebVerifiableHistory` constructors/methods.
 [Error]
 enum WebVerifiableHistoryError {
     /// DID method is not supported by this resolver.
@@ -71,12 +72,23 @@ enum WebVerifiableHistoryError {
     "InvalidDataIntegrityProof"
 };
 
+/// The container for any *valid* `did:webvh` DID log in terms of the
+/// Read (Resolve) DID method operation (for a `did:webvh` DID),
+/// as specified by https://identity.foundation/didwebvh/v1.0/#read-resolve
 interface WebVerifiableHistory {
+    /// The single constructor of `WebVerifiableHistory` implementing the
+    /// "Read (Resolve) DID method operation" (for a `did:webvh` DID), as specified by https://identity.foundation/didwebvh/v1.0/#read-resolve
+    ///
+    /// In case of error/exception, all the detailed information required to narrow down the root cause are available as well.
     [Name=read, Throws=WebVerifiableHistoryError]
     constructor(string did_webvh, string did_log);
+    /// Delivers the fully qualified DID identifier of the DID log previously resolved in the constructor
     string get_did();
+    /// Delivers the very same DID log previously resolved in the constructor
     string get_did_log();
+    /// Delivers the fully qualified DID document (as `String`) contained within the DID log previously resolved in the constructor
     string get_did_doc();
+    /// Delivers the fully qualified DID document (as `DidDoc`) contained within the DID log previously resolved in the constructor
     [Throws=WebVerifiableHistoryError]
     DidDoc get_did_doc_obj();
 };
