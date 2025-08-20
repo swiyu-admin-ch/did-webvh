@@ -2,18 +2,6 @@
 namespace did_webvh {
 };
 
-[ExternalInterface="did_sidekicks"]
-typedef extern Ed25519Signature;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern Ed25519SigningKey;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern Ed25519VerifyingKey;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern Ed25519KeyPair;
-
 [External="did_sidekicks"]
 typedef extern Jwk;
 
@@ -25,6 +13,9 @@ typedef extern VerificationMethod;
 
 [ExternalInterface="did_sidekicks"]
 typedef extern DidDoc;
+
+[ExternalInterface="did_sidekicks"]
+typedef extern DidLogEntryJsonSchema;
 
 [ExternalInterface="did_sidekicks"]
 typedef extern DidLogEntryValidatorError;
@@ -90,19 +81,10 @@ interface WebVerifiableHistory {
     DidDoc get_did_doc_obj();
 };
 
-interface DidDocumentState {
-    [Name=from, Throws=WebVerifiableHistoryError]
-    constructor(string did_log);
-    [Throws=WebVerifiableHistoryError]
-    DidDoc validate();
-    [Throws=WebVerifiableHistoryError]
-    DidDoc validate_with_scid(string? scid);
-};
-
 /// W.r.t. corresponding specification version available at https://identity.foundation/didwebvh
 ///
-/// # CAUTION The single currently supported `didwebvh` specification version is: v0.3
-enum DidLogEntryJsonSchema {
+/// # CAUTION The single currently supported `didwebvh` specification version is: v1.0
+enum WebVerifiableHistoryDidLogEntryJsonSchema {
     /// As defined by https://identity.foundation/didwebvh/v1.0 but w.r.t. (eID-conformity) addendum:
     /// - https://confluence.bit.admin.ch/x/r_0EMw (DID Log Conformity Check)
     /// - https://confluence.bit.admin.ch/x/3e0EMw (DID Doc Conformity Check)

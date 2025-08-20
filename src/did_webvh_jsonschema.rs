@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 
-use std::str::from_utf8;
-
+use did_sidekicks::did_jsonschema::DidLogEntryJsonSchema;
 use rust_embed::Embed;
+use std::str::from_utf8;
 
 #[derive(Embed)]
 #[folder = "src/embed/jsonschema"]
 #[include = "*.json"]
-struct DidLogJsonSchemaEmbedFolder;
+struct WebVerifiableHistoryDidLogJsonSchemaEmbedFolder;
 
 /// W.r.t. corresponding specification version available at https://identity.foundation/didwebvh
 ///
-/// # CAUTION The single currently supported version is: v0.3
+/// # CAUTION The single currently supported version is: v1.0
 #[derive(Debug, Clone, PartialEq)]
-pub enum DidLogEntryJsonSchema {
+pub enum WebVerifiableHistoryDidLogEntryJsonSchema {
     /// As defined by https://identity.foundation/didwebvh/v1.0 but w.r.t. (eID-conformity) addendum:
     /// - https://confluence.bit.admin.ch/x/r_0EMw (DID Log Conformity Check)
     /// - https://confluence.bit.admin.ch/x/3e0EMw (DID Doc Conformity Check)
@@ -22,15 +22,24 @@ pub enum DidLogEntryJsonSchema {
     V1_0,
 }
 
-impl DidLogEntryJsonSchema {
+/// As defined by https://identity.foundation/didwebvh/v1.0
+const DID_LOG_ENTRY_JSONSCHEMA_V_1_0_FILENAME: &str = "did_log_jsonschema_v_1_0.json";
+
+/// As defined by https://identity.foundation/didwebvh/v1.0 bzt w.r.t. (eID-conformity) addendum:
+/// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check
+/// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Doc+Conformity+Check
+const DID_LOG_ENTRY_JSONSCHEMA_V_1_0_EID_CONFORM_FILENAME: &str =
+    "did_log_jsonschema_v_1_0_eid_conform.json";
+
+impl DidLogEntryJsonSchema for WebVerifiableHistoryDidLogEntryJsonSchema {
     /// Converts this type into a corresponding JSON schema in UTF-8 format.
-    pub fn as_schema(&self) -> String {
+    fn get_json_schema(&self) -> String {
         let file_name = match self {
-            Self::V1_0 => "did_log_jsonschema_v_1_0.json",
-            Self::V1_0EidConform => "did_log_jsonschema_v_1_0_eid_conform.json",
+            Self::V1_0 => DID_LOG_ENTRY_JSONSCHEMA_V_1_0_FILENAME,
+            Self::V1_0EidConform => DID_LOG_ENTRY_JSONSCHEMA_V_1_0_EID_CONFORM_FILENAME,
         };
-        // CAUTION This unwrap() call will panic only if file denoted by DID_LOG_ENTRY_JSONSCHEMA_V_0_3_FILENAME does not exist
-        let schema_file = DidLogJsonSchemaEmbedFolder::get(file_name).unwrap();
+        // CAUTION This unwrap() call will panic only if file denoted by DID_LOG_ENTRY_JSONSCHEMA_V_*_FILENAME does not exist
+        let schema_file = WebVerifiableHistoryDidLogJsonSchemaEmbedFolder::get(file_name).unwrap();
         // CAUTION This unwrap() call will panic only if file denoted by schema_file is not UTF-8
         from_utf8(schema_file.data.as_ref()).unwrap().to_string()
     }
@@ -38,14 +47,14 @@ impl DidLogEntryJsonSchema {
 
 #[cfg(test)]
 mod test {
-    use crate::did_webvh_jsonschema::DidLogEntryJsonSchema;
-    use did_sidekicks::did_jsonschema::{DidLogEntryValidator, DidLogEntryValidatorErrorKind};
+    use crate::did_webvh_jsonschema::WebVerifiableHistoryDidLogEntryJsonSchema;
+    use did_sidekicks::did_jsonschema::{DidLogEntryJsonSchema, DidLogEntryValidator, DidLogEntryValidatorErrorKind};
     use rstest::rstest;
     use serde_json::{json, Value};
 
     #[rstest]
     // CAUTION V1_0-specific (happy path) case
-    #[case(vec!(DidLogEntryJsonSchema::V1_0), json!({
+    #[case(vec!(WebVerifiableHistoryDidLogEntryJsonSchema::V1_0), json!({
     "versionId": "1-QmVCzWgVX2isJE6tsmUcHnNHQJ9WXZb9A26VpkxptB2fqb",
     "versionTime": "2025-05-09T22:33:41Z",
     "parameters": {
@@ -88,8 +97,9 @@ mod test {
         "proofValue": "z4rDHfJZ5hxVTu3TYnTLo2tTLyRFfBpzgkoWMnkLcg6tVXerkTXmXduHbM1oaMakhrc6sFt1A5Nj6AH5y63EFJysi"
       }
     ]
-  }), true, "")] // example did log entry from https://github.com/decentralized-identity/didwebvh-py/blob/main/sample-diddoc/did.jsonl
-    #[case(vec!(DidLogEntryJsonSchema::V1_0), json!({
+  }), true, ""
+    )] // example did log entry from https://github.com/decentralized-identity/didwebvh-py/blob/main/sample-diddoc/did.jsonl
+    #[case(vec!(WebVerifiableHistoryDidLogEntryJsonSchema::V1_0), json!({
         "versionId": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
         "versionTime": "2012-12-12T12:12:12Z",
         "parameters": {
@@ -134,7 +144,7 @@ mod test {
             "challenge": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR"
         }]}), true, "")]
     // CAUTION V1_0EidConform-specific (happy path) case
-    #[case(vec!(DidLogEntryJsonSchema::V1_0EidConform), json!({
+    #[case(vec!(WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform), json!({
         "versionId": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
         "versionTime": "2012-12-12T12:12:12Z",
         "parameters": {
@@ -173,7 +183,7 @@ mod test {
             "proofValue": "z4a92V6EKmWvURx99HXVTEM6KJhbVZZ1s4qN8HJXTMesSoDJx1VpTNtuNUpae2eHpXXKwBGjtCYC2EQK7b6eczmnp",
             "challenge": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR"
         }],}), true, "")]
-    #[case(vec!(DidLogEntryJsonSchema::V1_0, DidLogEntryJsonSchema::V1_0EidConform), json!({
+    #[case(vec!(WebVerifiableHistoryDidLogEntryJsonSchema::V1_0, WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform), json!({
         "versionId": "invalid-version-id",
         "versionTime": "2012-12-12T12:12:12Z",
         "parameters": {"method": "did:webvh:1.0"},
@@ -182,8 +192,9 @@ mod test {
             "created": "2012-12-12T12:12:12Z",
             "challenge": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
             "proofValue": "z4a92V6EKmWvURx99HXVTEM6KJhbVZZ1s4qN8HJXTMesSoDJx1VpTNtuNUpae2eHpXXKwBGjtCYC2EQK7b6eczmnp",
-        }],}), false, "\"invalid-version-id\" does not match \"^[1-9][0-9]*-Q[1-9a-zA-NP-Z]{45,}$\"")]
-    #[case(vec!(DidLogEntryJsonSchema::V1_0, DidLogEntryJsonSchema::V1_0EidConform), json!({
+        }],}), false, "\"invalid-version-id\" does not match \"^[1-9][0-9]*-Q[1-9a-zA-NP-Z]{45,}$\""
+    )]
+    #[case(vec!(WebVerifiableHistoryDidLogEntryJsonSchema::V1_0, WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform), json!({
         "versionId": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
         "versionTime": "invalid-version-time",
         "parameters": {"method": "did:webvh:1.0"},
@@ -193,19 +204,20 @@ mod test {
             "challenge": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
             "proofValue": "z4a92V6EKmWvURx99HXVTEM6KJhbVZZ1s4qN8HJXTMesSoDJx1VpTNtuNUpae2eHpXXKwBGjtCYC2EQK7b6eczmnp",
         }],}), false, "Datetime not in ISO8601 format")]
-    #[case(vec!(DidLogEntryJsonSchema::V1_0, DidLogEntryJsonSchema::V1_0EidConform), json!({
+    #[case(vec!(WebVerifiableHistoryDidLogEntryJsonSchema::V1_0, WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform), json!({
         "versionId": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
         "versionTime": "2012-12-12T12:12:12Z", 
         "parameters": {"":""},
         "state": {}, 
         "proof": [{"":""}]}), false, "Additional properties are not allowed ('' was unexpected)")]
-    #[case(vec!(DidLogEntryJsonSchema::V1_0, DidLogEntryJsonSchema::V1_0EidConform), json!({
+    #[case(vec!(WebVerifiableHistoryDidLogEntryJsonSchema::V1_0, WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform), json!({
         "versionId": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
         "versionTime": "2012-12-12T12:12:12Z", 
         "parameters": {},
         "state": {"id": "did:webvh:QmT7BM5RsM9SoaqAQKkNKHBzSEzpS2NRzT2oKaaaPYPpGr:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085#auth-key-01"}, 
-        "proof": [{"":""}]}), false, "\"@context\" is a required property")] // params may be empty, but DID doc must be complete
-    #[case(vec!(DidLogEntryJsonSchema::V1_0, DidLogEntryJsonSchema::V1_0EidConform), json!({
+        "proof": [{"":""}]}), false, "\"@context\" is a required property"
+    )] // params may be empty, but DID doc must be complete
+    #[case(vec!(WebVerifiableHistoryDidLogEntryJsonSchema::V1_0, WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform), json!({
         "versionId": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
         "versionTime": "2012-12-12T12:12:12Z", 
         "parameters": {},
@@ -215,7 +227,7 @@ mod test {
         }, 
         "proof": [{}]}), false, "\"type\" is a required property")] // proof must not be empty
     fn test_validate_using_schema(
-        #[case] schemata: Vec<DidLogEntryJsonSchema>,
+        #[case] schemata: Vec<WebVerifiableHistoryDidLogEntryJsonSchema>,
         #[case] instance: Value,
         #[case] expected: bool,
         #[case] err_contains_pattern: &str,
@@ -223,7 +235,8 @@ mod test {
         //-> Result<(), Box<dyn std::error::Error>> {
 
         schemata.iter().for_each(|schema| {
-            let validator = DidLogEntryValidator::from(schema.as_schema());
+            let sch: &dyn DidLogEntryJsonSchema = schema;
+            let validator = DidLogEntryValidator::from(sch);
 
             //let is_valid = validator.validate(instance.to_string());
             let is_valid = validator.validate_str(instance.to_string().as_str());

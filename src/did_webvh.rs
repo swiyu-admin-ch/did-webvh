@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-use crate::did_webvh_jsonschema::DidLogEntryJsonSchema;
+use crate::did_webvh_jsonschema::WebVerifiableHistoryDidLogEntryJsonSchema;
 use crate::did_webvh_parameters::*;
 use crate::errors::*;
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, SecondsFormat, Utc};
 use did_sidekicks::did_doc::*;
-use did_sidekicks::did_jsonschema::DidLogEntryValidator;
+use did_sidekicks::did_jsonschema::{DidLogEntryJsonSchema, DidLogEntryValidator};
 use did_sidekicks::ed25519::*;
 use did_sidekicks::jcs_sha256_hasher::JcsSha256Hasher;
 use did_sidekicks::vc_data_integrity::{
@@ -393,8 +393,8 @@ impl DidDocumentState {
         // CAUTION Despite parallelization, bear in mind that (according to benchmarks) the overall
         //         performance improvement will be considerable only in case of larger DID logs,
         //         featuring at least as many entries as `std::thread::available_parallelism()` would return.
-        let validator =
-            DidLogEntryValidator::from(DidLogEntryJsonSchema::V1_0EidConform.as_schema());
+        let sch: &dyn DidLogEntryJsonSchema = &WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform;
+        let validator = DidLogEntryValidator::from(sch);
         if let Some(err) = did_log
             .par_lines() // engage a parallel iterator (thanks to 'use rayon::prelude::*;' import)
             // Once a non-None value is produced from the map operation,

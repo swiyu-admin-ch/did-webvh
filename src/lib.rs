@@ -15,8 +15,8 @@ pub mod errors;
 
 // CAUTION All structs required by UniFFI bindings generator (declared in UDL) MUST also be "used" here
 use did_sidekicks::did_doc::*;
-use did_sidekicks::did_jsonschema::*;
-use did_sidekicks::ed25519::*;
+//use did_sidekicks::did_jsonschema::*;
+//use did_sidekicks::ed25519::*;
 use did_webvh::*;
 use did_webvh_jsonschema::*;
 use errors::*;
