@@ -13,7 +13,7 @@ typedef struct VerificationMethod;
 
 // Returned by `WebVerifiableHistory`'s method get_did_doc_obj
 [External="did_sidekicks"]
-typedef struct DidDoc;
+typedef interface DidDoc;
 
 [External="did_sidekicks"]
 typedef trait DidLogEntryJsonSchema;

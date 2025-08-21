@@ -850,7 +850,7 @@ impl TryFrom<(String, Option<bool>)> for WebVerifiableHistoryId {
 
 /// The container for any *valid* `did:webvh` DID log in terms of the
 /// [*DID resolution*](https://identity.foundation/didwebvh/v1.0/#read-resolve).
-/// 
+///
 /// Namely, the struct implements the
 /// [*Read (Resolve)* DID method operation for a `did:webvh` DID](https://identity.foundation/didwebvh/v1.0/#read-resolve)
 /// in its constructor.
@@ -887,10 +887,10 @@ impl WebVerifiableHistory {
     /// Delivers the fully qualified DID document (as [`DidDoc`]) contained within the DID log previously supplied via [`WebVerifiableHistory::read`] constructor.
     ///
     /// Yet another UniFFI-compliant method.
-    pub fn get_did_doc_obj(&self) -> Result<DidDoc, WebVerifiableHistoryError> {
+    pub fn get_did_doc_obj(&self) -> Result<Arc<DidDoc>, WebVerifiableHistoryError> {
         let did_doc_json = self.did_doc.clone();
         match json_from_str::<DidDoc>(&did_doc_json) {
-            Ok(doc) => Ok(doc),
+            Ok(doc) => Ok(doc.into()),
             Err(e) => Err(WebVerifiableHistoryError::DeserializationFailed(
                 e.to_string(),
             )),
