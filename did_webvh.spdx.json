@@ -3269,7 +3269,7 @@
     },
     {
       "SPDXID": "SPDXRef-Package-did_webvh-1.0.0",
-      "description": "A partial implementation (focusing on resolution) of historical Trust DID Web - did:tdw - v1.0 specification",
+      "description": "A partial implementation (focusing on resolution) of historical Trust DID Web - did:webvh - v1.0 specification",
       "downloadLocation": "NONE",
       "homepage": "https://github.com/swiyu-admin-ch/did-webvh",
       "licenseConcluded": "MIT",
