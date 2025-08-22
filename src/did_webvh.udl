@@ -24,8 +24,8 @@ typedef enum DidLogEntryValidatorError;
 [External="did_sidekicks"]
 typedef struct DidLogEntryValidator;
 
-/// The error accompanying WebVerifiableHistoryId.
-/// It might occur while calling WebVerifiableHistoryId methods.
+/// The error accompanying `WebVerifiableHistoryId`.
+/// It might occur while calling `WebVerifiableHistoryId` methods.
 [Error]
 enum WebVerifiableHistoryIdResolutionError {
     /// DID method is not supported by this resolver.

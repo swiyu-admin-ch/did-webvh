@@ -7,19 +7,19 @@
     "versionId": {
       "type": "string",
       "pattern": "^[1-9][0-9]*-Q[1-9a-zA-NP-Z]{45,}$",
-      "$comment": "A value that combines the version number (starting at 1 and incremented by one per version), a literal dash -, and a hash of the entry. The entry hash calculation links each entry to its predecessor in a ledger-like chain."
+      "$comment": "The value of versionId MUST be a string consisting of the DID version number (starting at 1 and incrementing by one per DID version), a literal dash -, and the entryHash, a hash calculated across the log entry content. The input to the hash is chosen so as to link each entry to its predecessor in a ledger-like chain."
     },
     "versionTime": {
       "type": "string",
       "did-version-time": true,
-      "$comment": "As asserted by the DID Controller, in ISO8601 format."
+      "$comment": "The value of versionTime MUST be a timestamp in UTC of the entry in ISO8601 format, as asserted by the DID Controller. The timestamp MUST be the time the DID will be retrieved by a witness or resolver, or before."
     },
     "parameters": {
       "type": "object",
       "properties": {
         "method": {
           "const": "did:webvh:1.0",
-          "$comment": "Required only within first entry. This item MUST appear in the first DID log entry."
+          "$comment": "Specifies the did:webvh [SEMVER] specification version to be used for processing the DID’s log. Each acceptable value in turn defines what cryptographic algorithms are permitted for the current and subsequent DID log entries. An update to the specification version in the middle of a DID Log could introduce new parameters."
         },
         "scid": {
           "type": "string",
@@ -28,22 +28,22 @@
         },
         "updateKeys": {
           "type": "array",
-          "$comment": "A list of one or more multikey formatted public keys associated with the private keys that are authorized to sign the log entries that update the DID from one version to the next. This item MUST appear in the first DID log entry.",
+          "$comment": "A JSON array of multikey formatted public keys associated with the private keys that are authorized to sign the log entries that update the DID.",
           "items": {
             "type": "string",
             "pattern": "^z[1-9a-zA-NP-Z]{47,}$"
           }
         },
         "nextKeyHashes": {
-          "type": "array",
-          "$comment": "An array of strings that are hashes of multikey formatted public keys that MAY be added to the updateKeys list in the log entry of a future version of the DID.",
+          "type": [ "array", "null" ],
+          "$comment": "A JSON array of strings that are hashes of multikey formatted public keys that MAY be added to the updateKeys list in the next log entry. At least one entry of nextKeyHashes MUST be added to the next updateKeys list.",
           "items": {
             "type": "string",
             "pattern": "^Q[1-9a-zA-NP-Z]{45,}$"
           }
         },
         "witness": {
-          "type": "object",
+          "type": [ "object", "null" ],
           "$comment": "A JSON object declaring the set of witnesses and threshold number of witness proofs required to update the DID.",
           "properties": {
             "threshold": {
@@ -64,32 +64,34 @@
               }
             }
           },
-          "additionalPorperties": false
+          "additionalProperties": false
         },
         "watchers": {
-          "type": "array",
+          "type": [ "array", "null" ],
           "items": {
             "type": "string"
           },
-          "$comment": "An optional entry whose value is a JSON array containing a list of URLs ([RFC9110]) that have notified the DID Controller that they are willing to watch the DID. See the Watchers section of this specification for more details. "
+          "$comment": "An optional entry whose value is a JSON array containing a list of URLs ([RFC9110]) that have notified the DID Controller that they are willing to watch the DID."
         },
         "portable": {
           "type": "boolean",
-          "$comment": "A boolean flag indicating if the DID is portable and thus can be renamed to change the Web location of the DID. Must be unset or false in the first did log entry (REQUIREMENT)"
+          "$comment": "Boolean (JSON true / false) indicating if the DID is portable, allowing a DID Controller to control if a DID can be moved, while retaining its SCID and verifiable history."
         },
         "deactivated": {
           "type": "boolean",
-          "$comment": "A JSON boolean that SHOULD be set to true when the DID is to be deactivated. See the deactivate (revoke) section of this specification for more details."
+          "$comment": "A JSON boolean that indicates whether the DID has been deactivated. A deactivated DID is no longer subject to updates but remains resolvable."
         },
         "ttl": {
-          "type": "integer",
-          "$comment": "A number, the number of seconds that a cache entry for a resolved did:webvh DID SHOULD last, as recommended by the DID Controller."
+          "type": [ "integer", "null" ],
+          "$comment": "An unsigned integer that indicates how long, in seconds, a resolver should cache the resolved did:webvh DID before refreshing."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "$comment": "Some early did:webvh implementations used the JSON null value to indicate the deactivation of parameters such as watchers, witness, updateKeys, nextKeyHashes, and ttl. Although this usage is deprecated and not valid per the current specification, resolver implementations SHOULD gracefully accept null and immediately convert the value to their equivalent default value for the parameter when processing DID Log entries."
     },
     "state": {
       "type": "object",
+      "$comment": "The JSON object state contains the DIDDoc for this version of the DID. As specified by https://www.w3.org/TR/did-1.0/#did-document-properties",
       "properties": {
         "@context": {
           "anyOf": [
@@ -275,11 +277,11 @@
         "id",
         "@context"
       ],
-      "additionalProperties": false,
-      "$comment": "As specified by https://www.w3.org/TR/did-1.0/#did-document-properties"
+      "additionalProperties": false
     },
     "proof": {
       "type": "array",
+      "$comment": "The JSON array proof contains a Data Integrity proof created for the entry and signed by a key authorized to update the DIDDoc.",
       "items": {
         "type": "object",
         "$comment": "As specified by https://www.w3.org/TR/vc-di-eddsa/#eddsa-jcs-2022",

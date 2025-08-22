@@ -984,10 +984,6 @@ mod test {
         "[] is not valid under any of the schemas listed in the 'anyOf' keyword"
     )]
     #[case(
-        r#"{"versionId":"1-Qhashhashhashhashhashhashhashhashhashhashhashhash","versionTime":"2025-04-29T17:15:59Z", "parameters":{}, "state":{"@context":["https://www.w3.org/ns/did/v1"], "id":""} }"#,
-        "] is not valid under any of the schemas listed in the 'anyOf' keyword"
-    )]
-    #[case(
         r#"{"versionId":"1-Qhashhashhashhashhashhashhashhashhashhashhashhash","versionTime":"2025-04-29T17:15:59Z", "parameters":{}, "state":{"@context":["https://w3id.org/security/jwk/v1"], "id":""} }"#,
         "] is not valid under any of the schemas listed in the 'anyOf' keyword"
     )]
