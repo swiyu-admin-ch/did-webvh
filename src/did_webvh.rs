@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::did_webvh_jsonschema::WebVerifiableHistoryDidLogEntryJsonSchema;
-use crate::did_webvh_parameters::*;
+use crate::did_webvh_method_parameters::*;
 use crate::errors::*;
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, SecondsFormat, Utc};
@@ -47,7 +47,7 @@ pub struct DidLogEntry {
     pub version_time: DateTime<Utc>,
 
     #[serde(rename = "parameters")]
-    pub parameters: DidMethodParameters,
+    pub parameters: WebVerifiableHistoryDidMethodParameters,
 
     #[serde(rename = "state")]
     pub did_doc: DidDoc,
@@ -107,7 +107,7 @@ impl<'de> de::Visitor<'de> for DidLogVersionVisitor {
         formatter.write_str("a versionId in the format '<version_index>-<hash>'")
     }
 
-    fn visit_str<E>(self, cmd_str: &str) -> std::result::Result<Self::Value, E>
+    fn visit_str<E>(self, cmd_str: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
@@ -126,7 +126,7 @@ impl DidLogEntry {
     pub fn new(
         version: DidLogVersion,
         version_time: DateTime<Utc>,
-        parameters: DidMethodParameters,
+        parameters: WebVerifiableHistoryDidMethodParameters,
         did_doc: DidDoc,
         did_doc_json: JsonValue,
         proof: DataIntegrityProof,
@@ -241,7 +241,7 @@ impl DidLogEntry {
         //   If this is the first entry in the log, set the value to <scid>, the value of the SCID of the DID.
         let prev_version_id = match &self.prev_entry {
             Some(v) => v.version.id.clone(),
-            None => match self.parameters.scid.clone() {
+            None => match self.parameters.get_scid_option() {
                 Some(v) => v,
                 None => {
                     return Err(WebVerifiableHistoryError::DeserializationFailed(
@@ -382,14 +382,18 @@ impl DidLogEntry {
     }
 }
 
+/// The parser for `did:webvh` DID logs implementing [`TryFrom<String>`] trait.
 #[derive(Serialize, Debug)]
-pub struct DidDocumentState {
+pub struct WebVerifiableHistoryDidLog {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub did_log_entries: Vec<DidLogEntry>,
+    did_method_parameters: WebVerifiableHistoryDidMethodParameters,
 }
 
-impl DidDocumentState {
-    pub fn from(did_log: String) -> Result<Self, WebVerifiableHistoryError> {
+impl TryFrom<String> for WebVerifiableHistoryDidLog {
+    type Error = WebVerifiableHistoryError;
+
+    fn try_from(did_log: String) -> Result<Self, Self::Error> {
         // CAUTION Despite parallelization, bear in mind that (according to benchmarks) the overall
         //         performance improvement will be considerable only in case of larger DID logs,
         //         featuring at least as many entries as `std::thread::available_parallelism()` would return.
@@ -408,15 +412,14 @@ impl DidDocumentState {
             ));
         }
 
-        let mut current_params: Option<DidMethodParameters> = None;
+        let mut current_params: Option<WebVerifiableHistoryDidMethodParameters> = None;
         let mut prev_entry: Option<Arc<DidLogEntry>> = None;
 
         let mut is_deactivated: bool = false;
         //let now= Local::now();
         let now = Utc::now();
 
-        Ok(DidDocumentState {
-            did_log_entries: did_log
+        let did_log_entries = did_log
                 .lines()
                 .filter(|line| !line.is_empty())
                 .map(|line| {
@@ -432,7 +435,7 @@ impl DidDocumentState {
                     let entry: JsonValue = serde_json::from_str(line).unwrap();     // ...no panic is expected here
                     let version: DidLogVersion = match serde_json::from_str(entry[DID_LOG_ENTRY_VERSION_ID].to_string().as_str()) {
                         Ok(v) => v,
-                        Err(err) => {return Err(WebVerifiableHistoryError::DeserializationFailed(format!("Invalid versionId: {}", err)));},
+                        Err(err) => { return Err(WebVerifiableHistoryError::DeserializationFailed(format!("Invalid versionId: {}", err))); },
                     };
 
                     if prev_entry.is_none() && version.index != 1
@@ -458,11 +461,11 @@ impl DidDocumentState {
                         return Err(WebVerifiableHistoryError::DeserializationFailed("`versionTime` must be greater than the `versionTime` of the previous entry.".to_string()));
                     }
 
-                    let mut new_params: Option<DidMethodParameters> = None;
+                    let mut new_params: Option<WebVerifiableHistoryDidMethodParameters> = None;
                     current_params = match entry[DID_LOG_ENTRY_PARAMETERS] {
                         JsonObject(ref obj) => {
                             if !obj.is_empty() {
-                                new_params = Some(DidMethodParameters::from_json(&entry[DID_LOG_ENTRY_PARAMETERS].to_string())?);
+                                new_params = Some(WebVerifiableHistoryDidMethodParameters::from_json(&entry[DID_LOG_ENTRY_PARAMETERS].to_string())?);
                             }
 
                             match (current_params.clone(), new_params.clone()) {
@@ -476,7 +479,7 @@ impl DidDocumentState {
                                     Some(new_params) // from the initial log entry
                                 }
                                 (Some(current_params), None) => {
-                                    new_params = Some(DidMethodParameters::empty());
+                                    new_params = Some(WebVerifiableHistoryDidMethodParameters::empty());
                                     Some(current_params.to_owned())
                                 }
                                 (Some(current_params), Some(new_params)) => {
@@ -488,7 +491,7 @@ impl DidDocumentState {
                         }
                         _ => {
                             return Err(WebVerifiableHistoryError::DeserializationFailed(
-                                "Missing DID Document parameters.".to_string(),
+                                "Missing DID method parameters.".to_string(),
                             ))
                         }
                     };
@@ -569,10 +572,24 @@ impl DidDocumentState {
                     prev_entry = Some(Arc::from(current_entry.clone()));
 
                     Ok(current_entry)
-                }).collect::<Result<Vec<DidLogEntry>, WebVerifiableHistoryError>>()?
+                }).collect::<Result<Vec<DidLogEntry>, WebVerifiableHistoryError>>()?;
+
+        if current_params.is_none() {
+            // unlikely, but still
+            return Err(WebVerifiableHistoryError::DeserializationFailed(
+                "Missing DID method parameters.".to_string(),
+            ));
+        }
+
+        Ok(WebVerifiableHistoryDidLog {
+            did_method_parameters: current_params.unwrap(), // a panic-safe unwrap call, due to the previous line
+            did_log_entries,
         })
     }
+}
 
+
+impl WebVerifiableHistoryDidLog {
     /// Checks if all entries in the did log are valid (data integrity, versioning etc.)
     pub fn validate_with_scid(
         &self,
@@ -605,7 +622,7 @@ impl DidDocumentState {
 
             if expected_version_index == 1 {
                 // Verify that the SCID is correct
-                let scid = match entry.parameters.scid.clone() {
+                let scid = match entry.parameters.get_scid_option() {
                     Some(scid_value) => scid_value,
                     None => {
                         return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
@@ -647,9 +664,13 @@ impl DidDocumentState {
     pub fn validate(&self) -> Result<DidDoc, WebVerifiableHistoryError> {
         self.validate_with_scid(None)
     }
+
+    pub fn get_did_method_parameters(&self) -> WebVerifiableHistoryDidMethodParameters {
+        self.did_method_parameters.clone()
+    }
 }
 
-impl std::fmt::Display for DidDocumentState {
+impl std::fmt::Display for WebVerifiableHistoryDidLog {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut log = String::new();
         for entry in &self.did_log_entries {
@@ -860,6 +881,8 @@ pub struct WebVerifiableHistory {
     did: String,
     did_log: String,
     did_doc: String,
+    did_doc_obj: DidDoc,
+    did_method_parameters: WebVerifiableHistoryDidMethodParameters,
 }
 
 impl WebVerifiableHistory {
@@ -885,16 +908,26 @@ impl WebVerifiableHistory {
     }
 
     /// Delivers the fully qualified DID document (as [`DidDoc`]) contained within the DID log previously supplied via [`WebVerifiableHistory::read`] constructor.
+    pub fn get_did_doc_obj(&self) -> DidDoc {
+        self.did_doc_obj.clone()
+    }
+
+    /// The thread-safe version of [`WebVerifiableHistory::get_did_doc_obj`].
     ///
-    /// Yet another UniFFI-compliant method.
-    pub fn get_did_doc_obj(&self) -> Result<Arc<DidDoc>, WebVerifiableHistoryError> {
-        let did_doc_json = self.did_doc.clone();
-        match json_from_str::<DidDoc>(&did_doc_json) {
-            Ok(doc) => Ok(doc.into()),
-            Err(e) => Err(WebVerifiableHistoryError::DeserializationFailed(
-                e.to_string(),
-            )),
-        }
+    /// Yet another UniFFI-compliant getter.
+    pub fn get_did_doc_obj_thread_safe(&self) -> Arc<DidDoc> {
+        Arc::new(self.get_did_doc_obj())
+    }
+
+    pub fn get_did_method_parameters_obj(&self) -> WebVerifiableHistoryDidMethodParameters {
+        self.did_method_parameters.clone()
+    }
+
+    /// The thread-safe version of [`WebVerifiableHistory::get_did_method_parameters_obj`].
+    ///
+    /// Yet another UniFFI-compliant getter.
+    pub fn get_did_method_parameters(&self) -> Arc<WebVerifiableHistoryDidMethodParameters> {
+        Arc::new(self.get_did_method_parameters_obj())
     }
 
     /// The single constructor of [`WebVerifiableHistory`] implementing the
@@ -907,15 +940,14 @@ impl WebVerifiableHistory {
     pub fn read(did_webvh: String, did_log: String) -> Result<Self, WebVerifiableHistoryError> {
         // according to https://identity.foundation/didwebvh/v1.0/#read-resolve
         // parse did logs
-        let did_doc_state = DidDocumentState::from(did_log)?;
-        // 1. DID-to-HTTPS Transformation
-        let did = WebVerifiableHistoryId::parse_did_webvh(did_webvh.to_owned())
-            .map_err(|err| WebVerifiableHistoryError::InvalidMethodSpecificId(format!("{err}")))?;
-        let scid = did.get_scid();
+        let did_log_obj = WebVerifiableHistoryDidLog::try_from(did_log)?;
 
-        let did_doc_arc = did_doc_state.validate_with_scid(Some(scid.to_owned()))?;
-        let did_doc = did_doc_arc.clone();
-        let did_doc_str = match serde_json::to_string(&did_doc) {
+        // 1. DID-to-HTTPS Transformation
+        let did = WebVerifiableHistoryId::parse_did_webvh(did_webvh)
+            .map_err(|err| WebVerifiableHistoryError::InvalidMethodSpecificId(format!("{err}")))?;
+
+        let did_doc_valid = did_log_obj.validate_with_scid(Some(did.get_scid()))?;
+        let did_doc_str = match serde_json::to_string(&did_doc_valid) {
             Ok(v) => v,
             Err(e) => {
                 return Err(WebVerifiableHistoryError::SerializationFailed(
@@ -923,17 +955,21 @@ impl WebVerifiableHistory {
                 ))
             }
         };
+
         Ok(Self {
-            did: did_doc.id,
-            did_log: did_doc_state.to_string(), // DidDocumentState implements std::fmt::Display trait
+            did: did_doc_valid.to_owned().id,
+            did_log: did_log_obj.to_string(), // the type implements std::fmt::Display trait
             did_doc: did_doc_str,
+            did_doc_obj: did_doc_valid,
+            did_method_parameters: did_log_obj.get_did_method_parameters()
         })
     }
 }
 
+
 #[cfg(test)]
 mod test {
-    use crate::did_webvh::{DidDocumentState, WebVerifiableHistory};
+    use crate::did_webvh::{WebVerifiableHistory, WebVerifiableHistoryDidLog};
     use crate::errors::WebVerifiableHistoryErrorKind;
     use crate::test::assert_trust_did_web_error;
     use rstest::rstest;
@@ -998,11 +1034,11 @@ mod test {
     )]
     // invalid proof
     fn test_invalid_did_log(
-        #[case] input_str: String,
+        #[case] did_log: String,
         #[case] error_string: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         assert_trust_did_web_error(
-            DidDocumentState::from(input_str),
+            WebVerifiableHistoryDidLog::try_from(did_log),
             WebVerifiableHistoryErrorKind::DeserializationFailed,
             error_string,
         );

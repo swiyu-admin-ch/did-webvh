@@ -10,7 +10,7 @@ extern crate core;
 
 pub mod did_webvh;
 pub mod did_webvh_jsonschema;
-pub mod did_webvh_parameters;
+pub mod did_webvh_method_parameters;
 pub mod errors;
 
 // CAUTION All structs required by UniFFI bindings generator (declared in UDL) MUST also be "used" here
@@ -18,6 +18,7 @@ use did_sidekicks::did_doc::*;
 //use did_sidekicks::did_jsonschema::*;
 //use did_sidekicks::ed25519::*;
 use did_webvh::*;
+use did_webvh_method_parameters::*;
 use did_webvh_jsonschema::*;
 use errors::*;
 
@@ -267,7 +268,7 @@ mod test {
         #[case] did_log_raw_filepath: String,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath))?;
-        let did_document = DidDocumentState::from(did_log_raw)?;
+        let did_document = WebVerifiableHistoryDidLog::try_from(did_log_raw)?;
         for did_log in did_document.did_log_entries {
             let hash = did_log.calculate_entry_hash()?;
             assert!(hash == did_log.version.hash);

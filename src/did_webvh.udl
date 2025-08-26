@@ -11,6 +11,9 @@ typedef enum VerificationType;
 [External="did_sidekicks"]
 typedef struct VerificationMethod;
 
+[External="did_sidekicks"]
+typedef interface DidMethodParameter;
+
 // Returned by `WebVerifiableHistory`'s method get_did_doc_obj
 [External="did_sidekicks"]
 typedef interface DidDoc;
@@ -32,6 +35,15 @@ enum WebVerifiableHistoryIdResolutionError {
     "MethodNotSupported",
     /// Invalid method-specific identifier.
     "InvalidMethodSpecificId"
+};
+
+interface WebVerifiableHistoryDidMethodParameters {
+    /// Returns the SCID part from the supplied DID.
+    string get_scid();
+    ///
+    sequence<string> get_update_keys();
+    ///
+    boolean is_deactivated();
 };
 
 /// Represents a DID WEBVH, as specified at https://identity.foundation/didwebvh/v1.0/#method-specific-identifier:
@@ -88,9 +100,11 @@ interface WebVerifiableHistory {
     string get_did_log();
     /// Delivers the fully qualified DID document (as `String`) contained within the DID log previously resolved in the constructor
     string get_did_doc();
+    ///
+    WebVerifiableHistoryDidMethodParameters get_did_method_parameters();
     /// Delivers the fully qualified DID document (as `DidDoc`) contained within the DID log previously resolved in the constructor
-    [Throws=WebVerifiableHistoryError]
-    DidDoc get_did_doc_obj();
+    ///[Throws=WebVerifiableHistoryError]
+    DidDoc get_did_doc_obj_thread_safe();
 };
 
 /// W.r.t. corresponding specification version available at https://identity.foundation/didwebvh

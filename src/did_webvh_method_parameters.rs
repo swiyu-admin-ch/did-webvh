@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 use crate::errors::*;
+use did_sidekicks::did_method_parameters::DidMethodParameter;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 // See https://identity.foundation/didwebvh/v1.0/#didwebvh-did-method-parameters
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct DidMethodParameters {
+pub struct WebVerifiableHistoryDidMethodParameters {
     /// Specifies the did:webvh specification version to be used for processing the DID’s log.
     /// Each acceptable value in turn defines what cryptographic algorithms are permitted for the current and
     /// subsequent DID log entries. An update to the specification version in the middle of a DID Log could introduce new parameters.
@@ -16,7 +19,7 @@ pub struct DidMethodParameters {
     /// The SCID value for the DID
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub scid: Option<String>,
+    scid: Option<String>,
 
     /// A JSON array of multikey formatted public keys associated with the private keys that are authorized to sign the log entries that update the DID.
     /// See the Authorized Keys section of this specification for additional details.
@@ -57,32 +60,32 @@ pub struct DidMethodParameters {
     pub ttl: Option<usize>,
 }
 
-impl DidMethodParameters {
+impl WebVerifiableHistoryDidMethodParameters {
     pub fn for_genesis_did_doc(scid: String, update_key: String) -> Self {
-        DidMethodParameters {
-            method: Option::Some(String::from(DID_METHOD_PARAMETER_VERSION)),
-            scid: Option::Some(scid),
+        WebVerifiableHistoryDidMethodParameters {
+            method: Some(String::from(DID_METHOD_PARAMETER_VERSION)),
+            scid: Some(scid),
             update_keys: Some(vec![update_key]),
-            next_keys: Option::None,
-            witnesses: Option::None,
-            watchers: Option::None,
-            deactivated: Option::None,
-            ttl: Option::None,
-            portable: Option::Some(false),
+            next_keys: None,
+            witnesses: None,
+            watchers: None,
+            deactivated: None,
+            ttl: None,
+            portable: Some(false),
         }
     }
 
     pub fn empty() -> Self {
-        DidMethodParameters {
-            method: Option::None,
-            scid: Option::None,
-            update_keys: Option::None,
-            next_keys: Option::None,
-            witnesses: Option::None,
-            watchers: Option::None,
-            deactivated: Option::None,
-            ttl: Option::None,
-            portable: Option::None,
+        WebVerifiableHistoryDidMethodParameters {
+            method: None,
+            scid: None,
+            update_keys: None,
+            next_keys: None,
+            witnesses: None,
+            watchers: None,
+            deactivated: None,
+            portable: None,
+            ttl: None,
         }
     }
 
@@ -173,7 +176,7 @@ impl DidMethodParameters {
 
     pub fn merge_from(
         &mut self,
-        other: &DidMethodParameters,
+        other: &WebVerifiableHistoryDidMethodParameters,
     ) -> Result<(), WebVerifiableHistoryError> {
         let new_params = other.to_owned();
         let current_params = self.clone();
@@ -257,15 +260,121 @@ impl DidMethodParameters {
     }
 
     pub fn from_json(json_content: &str) -> Result<Self, WebVerifiableHistoryError> {
-        let did_method_parameters: DidMethodParameters = match serde_json::from_str(json_content) {
-            Ok(did_method_parameters) => did_method_parameters,
+        let did_method_parameters: WebVerifiableHistoryDidMethodParameters =
+            match serde_json::from_str(json_content) {
+                Ok(did_method_parameters) => did_method_parameters,
+                Err(err) => {
+                    return Err(WebVerifiableHistoryError::DeserializationFailed(format!(
+                        "Error parsing DID method parameters: {err}"
+                    )));
+                }
+            };
+        Ok(did_method_parameters)
+    }
+
+    pub fn get_scid_option(&self) -> Option<String> {
+        self.scid.clone()
+    }
+
+    /// Yet another UniFFI-compliant getter.
+    pub fn get_scid(&self) -> String {
+        if let Some(v) = &self.scid {
+            return v.clone();
+        }
+        "".to_string()
+    }
+
+    /// Yet another UniFFI-compliant getter.
+    pub fn get_update_keys(&self) -> Vec<String> {
+        if let Some(v) = &self.update_keys {
+            return v.clone();
+        }
+        vec![]
+    }
+
+    /// Yet another UniFFI-compliant getter.
+    pub fn is_deactivated(&self) -> bool {
+        if let Some(v) = self.deactivated {
+            if v {
+                return v;
+            }
+        }
+        false
+    }
+}
+
+impl TryInto<HashMap<String, Arc<DidMethodParameter>>> for WebVerifiableHistoryDidMethodParameters {
+    type Error = WebVerifiableHistoryError;
+
+    /// Conversion of [`WebVerifiableHistoryDidMethodParameters`] into map of [`DidMethodParameter`] objects.
+    ///
+    /// A UniFFI-compliant method.
+    fn try_into(self) -> Result<HashMap<String, Arc<DidMethodParameter>>, Self::Error> {
+        let params = self.clone();
+
+        // MUST appear in the first DID log entry
+        let method = match DidMethodParameter::new_string_from_option("method", params.method) {
+            Ok(v) => v,
             Err(err) => {
-                return Err(WebVerifiableHistoryError::DeserializationFailed(format!(
-                    "Error parsing DID method parameters: {err}"
-                )));
+                return Err(WebVerifiableHistoryError::InvalidDidParameter(format!(
+                    "{err}"
+                )))
             }
         };
-        Ok(did_method_parameters)
+
+        // MUST appear in the first log entry. MUST NOT appear in later log entries
+        let scid = match DidMethodParameter::new_string_from_option("scid", params.scid) {
+            Ok(v) => v,
+            Err(err) => {
+                return Err(WebVerifiableHistoryError::InvalidDidParameter(format!(
+                    "{err}"
+                )))
+            }
+        };
+
+        // This property MUST appear in the first log entry and MAY appear in subsequent entries
+        let update_keys = match DidMethodParameter::new_string_array_from_option(
+            "update_keys",
+            params.update_keys,
+        ) {
+            Ok(v) => v,
+            Err(err) => {
+                return Err(WebVerifiableHistoryError::InvalidDidParameter(format!(
+                    "{err}"
+                )))
+            }
+        };
+
+        Ok(HashMap::from([
+            (method.get_name(), Arc::new(method)),
+            (scid.get_name(), Arc::new(scid)),
+            (update_keys.get_name(), Arc::new(update_keys)),
+            // Defaults to false if omitted in the first entry
+            (
+                "portable".to_string(),
+                Arc::new(DidMethodParameter::new_bool_from_option(
+                    "portable",
+                    params.deactivated,
+                )),
+            ),
+            // Defaults to false if not set in the first DID log entry
+            (
+                "deactivated".to_string(),
+                Arc::new(DidMethodParameter::new_bool_from_option(
+                    "deactivated",
+                    params.deactivated,
+                )),
+            ),
+            // Defaults to 3600 (1 hour) if not set in the first DID log entry
+            (
+                "ttl".to_string(),
+                Arc::new(
+                    DidMethodParameter::new_number_from_option("ttl", params.ttl).unwrap_or_else(
+                        |_| DidMethodParameter::new_number_from_option("ttl", Some(3600)).unwrap(),
+                    ),
+                ),
+            ),
+        ]))
     }
 }
 
@@ -291,15 +400,24 @@ const DID_METHOD_PARAMETER_VERSION: &str = "did:webvh:1.0";
 
 #[cfg(test)]
 mod test {
-    use crate::did_webvh_parameters::{DidMethodParameters, Witness};
+    use crate::did_webvh_method_parameters::{
+        WebVerifiableHistoryDidMethodParameters, Witness, DID_METHOD_PARAMETER_VERSION,
+    };
     use crate::errors::WebVerifiableHistoryErrorKind;
     use crate::test::assert_trust_did_web_error;
+    use did_sidekicks::did_method_parameters::DidMethodParameter;
     use rstest::rstest;
+    use std::collections::HashMap;
+    use std::ops::Deref;
+    use std::sync::Arc;
 
     #[rstest]
     fn test_did_webvh_parameters_validate_initial() {
         let params_for_genesis_did_doc =
-            DidMethodParameters::for_genesis_did_doc("scid".to_string(), "update_key".to_string());
+            WebVerifiableHistoryDidMethodParameters::for_genesis_did_doc(
+                "scid".to_string(),
+                "update_key".to_string(),
+            );
         assert!(params_for_genesis_did_doc.validate_initial().is_ok());
 
         let mut params = params_for_genesis_did_doc.clone();
@@ -397,8 +515,10 @@ mod test {
 
     #[rstest]
     fn test_did_webvh_parameters_validate_transition() {
-        let base_params =
-            DidMethodParameters::for_genesis_did_doc("scid".to_string(), "update_key".to_string());
+        let base_params = WebVerifiableHistoryDidMethodParameters::for_genesis_did_doc(
+            "scid".to_string(),
+            "update_key".to_string(),
+        );
 
         let mut old_params = base_params.clone();
         let mut new_params = base_params.clone();
@@ -501,5 +621,86 @@ mod test {
             WebVerifiableHistoryErrorKind::InvalidDidParameter,
             "Unsupported 'portable' DID parameter.",
         );
+    }
+
+    #[rstest]
+    fn test_did_webvh_method_parameters_try_into() {
+        let mut base_params = WebVerifiableHistoryDidMethodParameters::for_genesis_did_doc(
+            "scid".to_string(),
+            "some_update_key".to_string(),
+        );
+        base_params.portable = Some(true);
+        base_params.deactivated = Some(true);
+        base_params.ttl = Some(7200);
+
+        let try_into = base_params.try_into(); // MUT
+
+        assert!(try_into.is_ok());
+        let param_map: HashMap<String, Arc<DidMethodParameter>> = try_into.unwrap();
+        assert!(!param_map.is_empty());
+
+        assert!(param_map.contains_key("method"));
+        let method_option = param_map.get("method");
+        assert!(method_option.is_some());
+        let method = method_option.unwrap();
+        assert!(method.is_string());
+        assert!(method.get_string_value().is_some());
+        assert_eq!(
+            DID_METHOD_PARAMETER_VERSION,
+            method.get_string_value().unwrap()
+        );
+
+        assert!(param_map.contains_key("scid"));
+        let scid_option = param_map.get("scid");
+        assert!(scid_option.is_some());
+        let scid = scid_option.unwrap();
+        assert!(scid.is_string());
+        assert!(method.get_string_value().is_some());
+        assert_eq!("scid", scid.get_string_value().unwrap());
+
+        assert!(param_map.contains_key("update_keys"));
+        let update_keys_option = param_map.get("update_keys");
+        assert!(update_keys_option.is_some());
+        let update_keys = update_keys_option.unwrap();
+        assert!(update_keys.is_array());
+        assert!(!update_keys.is_empty_array());
+        assert!(update_keys.get_string_array_value().is_some());
+        assert!(!update_keys.get_string_array_value().unwrap().is_empty());
+        assert!(!update_keys
+            .get_string_array_value()
+            .unwrap()
+            .iter()
+            .all(|v| v.is_empty()));
+        assert!(update_keys
+            .get_string_array_value()
+            .unwrap()
+            .iter()
+            .any(|v| v.contains("some_update_key")));
+
+        assert!(param_map.contains_key("portable"));
+        let portable_option = param_map.get("portable");
+        assert!(portable_option.is_some());
+        let portable = portable_option.unwrap();
+        assert!(portable.is_bool());
+        assert!(portable.get_bool_value().is_some_and(|t| { t == true }));
+
+        assert!(param_map.contains_key("deactivated"));
+        let deactivated_option = param_map.get("deactivated");
+        assert!(deactivated_option.is_some());
+        let deactivated = deactivated_option.unwrap();
+        assert!(deactivated.is_bool());
+        assert!(deactivated.get_bool_value().is_some_and(|t| { t == true }));
+
+        assert!(param_map.contains_key("ttl"));
+        let ttl_option = param_map.get("ttl");
+        assert!(ttl_option.is_some());
+        let ttl = ttl_option.unwrap();
+        assert!(!ttl.is_f64());
+        assert!(ttl.is_i64());
+        assert!(!ttl.is_u64());
+        assert!(ttl.get_f64_value().is_none());
+        assert!(ttl.get_i64_value().is_some());
+        assert!(ttl.get_u64_value().is_none());
+        assert_eq!(7200, ttl.get_i64_value().unwrap());
     }
 }
