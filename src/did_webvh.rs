@@ -7,6 +7,8 @@ use chrono::serde::ts_seconds;
 use chrono::{DateTime, SecondsFormat, Utc};
 use did_sidekicks::did_doc::*;
 use did_sidekicks::did_jsonschema::{DidLogEntryJsonSchema, DidLogEntryValidator};
+use did_sidekicks::did_method_parameters::DidMethodParameter;
+use did_sidekicks::did_resolver::DidResolver;
 use did_sidekicks::ed25519::*;
 use did_sidekicks::jcs_sha256_hasher::JcsSha256Hasher;
 use did_sidekicks::vc_data_integrity::{
@@ -22,6 +24,7 @@ use serde_json::{
     from_str as json_from_str, json, to_string as json_to_string, Value as JsonValue,
 };
 use std::cmp::PartialEq;
+use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 use url::Url;
 use url_escape;
@@ -588,7 +591,6 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
     }
 }
 
-
 impl WebVerifiableHistoryDidLog {
     /// Checks if all entries in the did log are valid (data integrity, versioning etc.)
     pub fn validate_with_scid(
@@ -908,7 +910,7 @@ impl WebVerifiableHistory {
     }
 
     /// Delivers the fully qualified DID document (as [`DidDoc`]) contained within the DID log previously supplied via [`WebVerifiableHistory::read`] constructor.
-    pub fn get_did_doc_obj(&self) -> DidDoc {
+    fn get_did_doc_obj(&self) -> DidDoc {
         self.did_doc_obj.clone()
     }
 
@@ -919,7 +921,7 @@ impl WebVerifiableHistory {
         Arc::new(self.get_did_doc_obj())
     }
 
-    pub fn get_did_method_parameters_obj(&self) -> WebVerifiableHistoryDidMethodParameters {
+    fn get_did_method_parameters_obj(&self) -> WebVerifiableHistoryDidMethodParameters {
         self.did_method_parameters.clone()
     }
 
@@ -961,11 +963,28 @@ impl WebVerifiableHistory {
             did_log: did_log_obj.to_string(), // the type implements std::fmt::Display trait
             did_doc: did_doc_str,
             did_doc_obj: did_doc_valid,
-            did_method_parameters: did_log_obj.get_did_method_parameters()
+            did_method_parameters: did_log_obj.get_did_method_parameters(),
         })
     }
 }
 
+impl DidResolver for WebVerifiableHistory {
+    type Error = WebVerifiableHistoryError;
+
+    fn resolve(did: String, did_log: String) -> Result<Self, Self::Error> {
+        WebVerifiableHistory::read(did, did_log)
+    }
+
+    fn get_did_doc_obj(&self) -> DidDoc {
+        self.get_did_doc_obj()
+    }
+
+    fn get_did_method_parameters_map(
+        &self,
+    ) -> impl TryInto<HashMap<String, Arc<DidMethodParameter>>> {
+        self.get_did_method_parameters_obj()
+    }
+}
 
 #[cfg(test)]
 mod test {
