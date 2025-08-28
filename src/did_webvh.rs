@@ -10,6 +10,7 @@ use did_sidekicks::did_jsonschema::{DidLogEntryJsonSchema, DidLogEntryValidator}
 use did_sidekicks::did_method_parameters::DidMethodParameter;
 use did_sidekicks::did_resolver::DidResolver;
 use did_sidekicks::ed25519::*;
+use did_sidekicks::errors::DidResolverError;
 use did_sidekicks::jcs_sha256_hasher::JcsSha256Hasher;
 use did_sidekicks::vc_data_integrity::{
     CryptoSuiteType, DataIntegrityProof, EddsaJcs2022Cryptosuite, VCDataIntegrity,
@@ -147,36 +148,32 @@ impl DidLogEntry {
     }
 
     /// Check whether the versionId of this log entry is based on the previous versionId
-    pub fn verify_version_id_integrity(&self) -> Result<(), WebVerifiableHistoryError> {
+    pub fn verify_version_id_integrity(&self) -> Result<(), DidResolverError> {
         // 1 Extract the versionId in the DID log entry, and remove from it the version number and dash prefix, leaving the log entry entryHash value.
         let hash = &self.version.hash;
         let calculated_hash = self.calculate_entry_hash().map_err(|err| {
-            WebVerifiableHistoryError::InvalidDataIntegrityProof(format!(
-                "Failed to build versionId: {err}"
-            ))
+            DidResolverError::InvalidDataIntegrityProof(format!("Failed to build versionId: {err}"))
         })?;
         if calculated_hash != *hash {
-            return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
-                format!(
-                    "Invalid DID log. The DID log entry has invalid entry hash: {}. Expected: {}",
-                    hash, calculated_hash,
-                ),
-            ));
+            return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                "Invalid DID log. The DID log entry has invalid entry hash: {}. Expected: {}",
+                hash, calculated_hash,
+            )));
         }
         Ok(())
     }
 
     /// Check whether the integrity proof matches the content of the did document of this log entry
-    pub fn verify_data_integrity_proof(&self) -> Result<(), WebVerifiableHistoryError> {
+    pub fn verify_data_integrity_proof(&self) -> Result<(), DidResolverError> {
         match &self.proof {
             None => {
-                return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+                return Err(DidResolverError::InvalidDataIntegrityProof(
                     "Invalid did log. Proof is empty.".to_string(),
                 ))
             }
             Some(v) => {
                 if v.is_empty() {
-                    return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+                    return Err(DidResolverError::InvalidDataIntegrityProof(
                         "Invalid did log. Proof is empty.".to_string(),
                     ));
                 }
@@ -189,18 +186,19 @@ impl DidLogEntry {
                     let update_key = match proof.extract_update_key() {
                         Ok(key) => key,
                         Err(err) => {
-                            return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
-                                format!("Failed to extract update key due to: {err}"),
-                            ))
+                            return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                                "Failed to extract update key due to: {err}"
+                            )))
                         }
                     };
 
                     let verifying_key = prev.is_key_authorized_for_update(update_key)?;
 
                     if !matches!(proof.crypto_suite_type, Some(CryptoSuiteType::EddsaJcs2022)) {
-                        return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
-                            format!("Unsupported proof's cryptosuite {}", proof.crypto_suite),
-                        ));
+                        return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                            "Unsupported proof's cryptosuite {}",
+                            proof.crypto_suite
+                        )));
                     }
 
                     let cryptosuite = EddsaJcs2022Cryptosuite {
@@ -225,9 +223,9 @@ impl DidLogEntry {
                     match cryptosuite.verify_proof(proof, doc_hash.as_str()) {
                         Ok(_) => (),
                         Err(err) => {
-                            return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
-                                format!("Failed to verify proof due to: {err}"),
-                            ))
+                            return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                                "Failed to verify proof due to: {err}"
+                            )))
                         }
                     };
                 }
@@ -237,7 +235,7 @@ impl DidLogEntry {
     }
 
     /// The new versionId takes the form \<version number\>-\<entryHash\>, where \<version number\> is the incrementing integer of version of the entry: 1, 2, 3, etc.
-    pub fn calculate_entry_hash(&self) -> Result<String, WebVerifiableHistoryError> {
+    pub fn calculate_entry_hash(&self) -> Result<String, DidResolverError> {
         // According to https://identity.foundation/didwebvh/v1.0/#entry-hash-generation-and-verification
         // 2 Determine hash algorithm, as specified by TODO, is base58btc
         // 3 Set the versionId in the entry object to be the versionId from the previous log entry.
@@ -247,7 +245,7 @@ impl DidLogEntry {
             None => match self.parameters.get_scid_option() {
                 Some(v) => v,
                 None => {
-                    return Err(WebVerifiableHistoryError::DeserializationFailed(
+                    return Err(DidResolverError::DeserializationFailed(
                         "Error extracting scid".to_string(),
                     ))
                 }
@@ -268,9 +266,7 @@ impl DidLogEntry {
         let calculated_hash = JcsSha256Hasher::default()
             .base58btc_encode_multihash(&entry_json)
             .map_err(|err| {
-                WebVerifiableHistoryError::SerializationFailed(format!(
-                    "Failed to encode multihash: {err}"
-                ))
+                DidResolverError::SerializationFailed(format!("Failed to encode multihash: {err}"))
             })?;
         Ok(calculated_hash)
     }
@@ -278,11 +274,11 @@ impl DidLogEntry {
     fn is_key_authorized_for_update(
         &self,
         update_key: String,
-    ) -> Result<Ed25519VerifyingKey, WebVerifiableHistoryError> {
+    ) -> Result<Ed25519VerifyingKey, DidResolverError> {
         match &self.parameters.update_keys {
             Some(update_keys) => {
                 if update_keys.is_empty() {
-                    return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+                    return Err(DidResolverError::InvalidDataIntegrityProof(
                         "No update keys detected".to_string(),
                     ));
                 }
@@ -290,22 +286,18 @@ impl DidLogEntry {
                 match update_keys.iter().find(|entry| *entry == &update_key) {
                     Some(_) => {}
                     _ => {
-                        return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
-                            format!(
+                        return Err(DidResolverError::InvalidDataIntegrityProof(format!(
                             "Key extracted from proof is not authorized for update: {update_key}"
-                        ),
-                        ))
+                        )))
                     }
                 };
 
                 let verifying_key = match Ed25519VerifyingKey::from_multibase(update_key.as_str()) {
                     Ok(key) => key,
                     Err(err) => {
-                        return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
-                            format!(
+                        return Err(DidResolverError::InvalidDataIntegrityProof(format!(
                         "Failed to convert update key (from its multibase representation): {err}"
-                    ),
-                        ))
+                    )))
                     }
                 };
 
@@ -315,7 +307,7 @@ impl DidLogEntry {
                 let prev_entry = match self.prev_entry.to_owned() {
                     Some(e) => e,
                     _ => {
-                        return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+                        return Err(DidResolverError::InvalidDataIntegrityProof(
                             "No update keys detected".to_string(),
                         ));
                     }
@@ -325,7 +317,7 @@ impl DidLogEntry {
         }
     }
 
-    fn to_log_entry_line(&self) -> Result<JsonValue, WebVerifiableHistoryError> {
+    fn to_log_entry_line(&self) -> Result<JsonValue, DidResolverError> {
         let did_doc_json_value = self.did_doc_json.clone();
 
         let version_time = self
@@ -345,7 +337,7 @@ impl DidLogEntry {
             let first_proof = match proof.first() {
                 Some(v) => v,
                 None => {
-                    return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+                    return Err(DidResolverError::InvalidDataIntegrityProof(
                         "Invalid did log. Proof is empty.".to_string(),
                     ))
                 }
@@ -353,11 +345,7 @@ impl DidLogEntry {
 
             let first_proof_json_val = match first_proof.json_value() {
                 Ok(val) => val,
-                Err(err) => {
-                    return Err(WebVerifiableHistoryError::SerializationFailed(format!(
-                        "{err}"
-                    )))
-                }
+                Err(err) => return Err(DidResolverError::SerializationFailed(format!("{err}"))),
             };
             entry[DID_LOG_ENTRY_PROOF] = json!(vec![first_proof_json_val]);
         }
@@ -394,7 +382,7 @@ pub struct WebVerifiableHistoryDidLog {
 }
 
 impl TryFrom<String> for WebVerifiableHistoryDidLog {
-    type Error = WebVerifiableHistoryError;
+    type Error = DidResolverError;
 
     fn try_from(did_log: String) -> Result<Self, Self::Error> {
         // CAUTION Despite parallelization, bear in mind that (according to benchmarks) the overall
@@ -410,9 +398,7 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
             .find_map_any(|line| validator.validate_str(line).err())
         {
             // The supplied DID log contains at least one entry that violates the JSON schema
-            return Err(WebVerifiableHistoryError::DeserializationFailed(
-                err.to_string(),
-            ));
+            return Err(DidResolverError::DeserializationFailed(err.to_string()));
         }
 
         let mut current_params: Option<WebVerifiableHistoryDidMethodParameters> = None;
@@ -427,7 +413,7 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                 .filter(|line| !line.is_empty())
                 .map(|line| {
                     if is_deactivated {
-                        return Err(WebVerifiableHistoryError::InvalidDidDocument(
+                        return Err(DidResolverError::InvalidDidDocument(
                             "This DID document is already deactivated. Therefore no additional DID logs are allowed.".to_string()
                         ));
                     }
@@ -438,12 +424,12 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                     let entry: JsonValue = serde_json::from_str(line).unwrap();     // ...no panic is expected here
                     let version: DidLogVersion = match serde_json::from_str(entry[DID_LOG_ENTRY_VERSION_ID].to_string().as_str()) {
                         Ok(v) => v,
-                        Err(err) => { return Err(WebVerifiableHistoryError::DeserializationFailed(format!("Invalid versionId: {}", err))); },
+                        Err(err) => { return Err(DidResolverError::DeserializationFailed(format!("Invalid versionId: {}", err))); },
                     };
 
                     if prev_entry.is_none() && version.index != 1
                         || prev_entry.is_some() && (version.index - 1).ne(&prev_entry.to_owned().unwrap().version.index) {
-                        return Err(WebVerifiableHistoryError::DeserializationFailed("Version numbers (`versionId`) must be in a sequence of positive consecutive integers.".to_string()));
+                        return Err(DidResolverError::DeserializationFailed("Version numbers (`versionId`) must be in a sequence of positive consecutive integers.".to_string()));
                     }
 
                     // https://identity.foundation/didwebvh/v1.0/#the-did-log-file:
@@ -457,11 +443,11 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
 
                     // CAUTION This check is not really required as it has been already implemented by the JSON schema validator
                     if version_time.ge(&now) {
-                        return Err(WebVerifiableHistoryError::DeserializationFailed(format!("`versionTime` '{version_time}' must be before the current datetime '{now}'.")));
+                        return Err(DidResolverError::DeserializationFailed(format!("`versionTime` '{version_time}' must be before the current datetime '{now}'.")));
                     }
 
                     if prev_entry.is_some() && version_time.lt(&prev_entry.to_owned().unwrap().version_time) {
-                        return Err(WebVerifiableHistoryError::DeserializationFailed("`versionTime` must be greater than the `versionTime` of the previous entry.".to_string()));
+                        return Err(DidResolverError::DeserializationFailed("`versionTime` must be greater than the `versionTime` of the previous entry.".to_string()));
                     }
 
                     let mut new_params: Option<WebVerifiableHistoryDidMethodParameters> = None;
@@ -472,7 +458,7 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                             }
 
                             match (current_params.clone(), new_params.clone()) {
-                                (None, None) => return Err(WebVerifiableHistoryError::DeserializationFailed(
+                                (None, None) => return Err(DidResolverError::DeserializationFailed(
                                     "Missing DID Document parameters.".to_string(),
                                 )),
                                 (None, Some(new_params)) => {
@@ -493,7 +479,7 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                             }
                         }
                         _ => {
-                            return Err(WebVerifiableHistoryError::DeserializationFailed(
+                            return Err(DidResolverError::DeserializationFailed(
                                 "Missing DID method parameters.".to_string(),
                             ))
                         }
@@ -516,7 +502,7 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                     let current_did_doc: DidDoc = match did_doc_value {
                         JsonObject(_) => {
                             if did_doc_value.is_null() {
-                                return Err(WebVerifiableHistoryError::DeserializationFailed(
+                                return Err(DidResolverError::DeserializationFailed(
                                     "DID Document was empty.".to_string(),
                                 ));
                             }
@@ -530,12 +516,12 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                                         Ok(did_doc_alt) => {
                                             match did_doc_alt.to_did_doc() {
                                                 Ok(doc) => doc,
-                                                Err(err) => return Err(WebVerifiableHistoryError::DeserializationFailed(format!(
+                                                Err(err) => return Err(DidResolverError::DeserializationFailed(format!(
                                                     "Deserialization of DID document failed due to: {err}"
                                                 ))),
                                             }
                                         }
-                                        Err(err) => return Err(WebVerifiableHistoryError::DeserializationFailed(
+                                        Err(err) => return Err(DidResolverError::DeserializationFailed(
                                             format!("Missing DID document: {err}")
                                         ))
                                     }
@@ -543,7 +529,7 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                             }
                         }
                         _ => {
-                            return Err(WebVerifiableHistoryError::DeserializationFailed(
+                            return Err(DidResolverError::DeserializationFailed(
                                 "Missing DID Document.".to_string(),
                             ))
                         }
@@ -551,14 +537,14 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
 
                     let proof = match DataIntegrityProof::from(entry[DID_LOG_ENTRY_PROOF].to_string()) {
                         Ok(p) => p,
-                        Err(err) => return Err(WebVerifiableHistoryError::DeserializationFailed(format!(
+                        Err(err) => return Err(DidResolverError::DeserializationFailed(format!(
                             "Failed to deserialize data integrity proof due to: {err}"
                         ))),
                     };
 
                     let parameters = match new_params {
                         Some(new_params) => new_params,
-                        None => return Err(WebVerifiableHistoryError::DeserializationFailed(
+                        None => return Err(DidResolverError::DeserializationFailed(
                             "Internal error: Missing parameter values.".to_string(),
                         ))
                     };
@@ -575,11 +561,11 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                     prev_entry = Some(Arc::from(current_entry.clone()));
 
                     Ok(current_entry)
-                }).collect::<Result<Vec<DidLogEntry>, WebVerifiableHistoryError>>()?;
+                }).collect::<Result<Vec<DidLogEntry>, DidResolverError>>()?;
 
         if current_params.is_none() {
             // unlikely, but still
-            return Err(WebVerifiableHistoryError::DeserializationFailed(
+            return Err(DidResolverError::DeserializationFailed(
                 "Missing DID method parameters.".to_string(),
             ));
         }
@@ -596,23 +582,21 @@ impl WebVerifiableHistoryDidLog {
     pub fn validate_with_scid(
         &self,
         scid_to_validate: Option<String>,
-    ) -> Result<DidDoc, WebVerifiableHistoryError> {
+    ) -> Result<DidDoc, DidResolverError> {
         let mut expected_version_index = 0;
         for entry in &self.did_log_entries {
             expected_version_index += 1;
 
             if entry.version.index != expected_version_index {
                 if expected_version_index == 1 {
-                    return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+                    return Err(DidResolverError::InvalidDataIntegrityProof(
                         "Invalid did log. First entry has to have version id 1".to_string(),
                     ));
                 } else {
-                    return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
-                        format!(
-                            "Invalid did log for version {}. Version id has to be incremented",
-                            entry.version.index,
-                        ),
-                    ));
+                    return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                        "Invalid did log for version {}. Version id has to be incremented",
+                        entry.version.index,
+                    )));
                 }
             }
 
@@ -627,7 +611,7 @@ impl WebVerifiableHistoryDidLog {
                 let scid = match entry.parameters.get_scid_option() {
                     Some(scid_value) => scid_value,
                     None => {
-                        return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+                        return Err(DidResolverError::InvalidDataIntegrityProof(
                             "Missing SCID inside the DID document.".to_string(),
                         ))
                     }
@@ -635,19 +619,19 @@ impl WebVerifiableHistoryDidLog {
 
                 if let Some(res) = &scid_to_validate {
                     if res.ne(scid.as_str()) {
-                        return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(format!(
+                        return Err(DidResolverError::InvalidDataIntegrityProof(format!(
                                         "The SCID '{scid}' supplied inside the DID document does not match the one supplied for validation: '{res}'"
                                     )));
                     }
                 }
 
                 let original_scid = entry.build_original_scid(&scid).map_err(|err| {
-                    WebVerifiableHistoryError::InvalidDataIntegrityProof(format!(
+                    DidResolverError::InvalidDataIntegrityProof(format!(
                         "Failed to build original SCID: {err}"
                     ))
                 })?;
                 if original_scid != scid {
-                    return Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+                    return Err(DidResolverError::InvalidDataIntegrityProof(
                         "Invalid did log. Genesis entry has invalid SCID".to_string(),
                     ));
                 }
@@ -656,14 +640,14 @@ impl WebVerifiableHistoryDidLog {
 
         match self.did_log_entries.last() {
             Some(entry) => Ok(entry.clone().did_doc),
-            None => Err(WebVerifiableHistoryError::InvalidDataIntegrityProof(
+            None => Err(DidResolverError::InvalidDataIntegrityProof(
                 "Invalid did log. No entries found".to_string(),
             )),
         }
     }
 
     /// Checks if all entries in the did log are valid (data integrity, versioning etc.)
-    pub fn validate(&self) -> Result<DidDoc, WebVerifiableHistoryError> {
+    pub fn validate(&self) -> Result<DidDoc, DidResolverError> {
         self.validate_with_scid(None)
     }
 
@@ -935,27 +919,23 @@ impl WebVerifiableHistory {
     /// The single constructor of [`WebVerifiableHistory`] implementing the
     /// [*Read (Resolve)* DID method operation for a `did:webvh` DID](https://identity.foundation/didwebvh/v1.0/#read-resolve)
     ///
-    /// In case of error, the available [`WebVerifiableHistoryError`] object features all the detailed
+    /// In case of error, the available [`DidResolverError`] object features all the detailed
     /// information required to narrow down the root cause.
     ///
     /// A UniFFI-compliant constructor.
-    pub fn read(did_webvh: String, did_log: String) -> Result<Self, WebVerifiableHistoryError> {
+    pub fn resolve(did_webvh: String, did_log: String) -> Result<Self, DidResolverError> {
         // according to https://identity.foundation/didwebvh/v1.0/#read-resolve
         // parse did logs
         let did_log_obj = WebVerifiableHistoryDidLog::try_from(did_log)?;
 
         // 1. DID-to-HTTPS Transformation
         let did = WebVerifiableHistoryId::parse_did_webvh(did_webvh)
-            .map_err(|err| WebVerifiableHistoryError::InvalidMethodSpecificId(format!("{err}")))?;
+            .map_err(|err| DidResolverError::InvalidMethodSpecificId(format!("{err}")))?;
 
         let did_doc_valid = did_log_obj.validate_with_scid(Some(did.get_scid()))?;
         let did_doc_str = match serde_json::to_string(&did_doc_valid) {
             Ok(v) => v,
-            Err(e) => {
-                return Err(WebVerifiableHistoryError::SerializationFailed(
-                    e.to_string(),
-                ))
-            }
+            Err(e) => return Err(DidResolverError::SerializationFailed(e.to_string())),
         };
 
         Ok(Self {
@@ -969,28 +949,27 @@ impl WebVerifiableHistory {
 }
 
 impl DidResolver for WebVerifiableHistory {
-    type Error = WebVerifiableHistoryError;
-
-    fn resolve(did: String, did_log: String) -> Result<Self, Self::Error> {
-        WebVerifiableHistory::read(did, did_log)
-    }
+    //type Error = DidResolverError;
 
     fn get_did_doc_obj(&self) -> DidDoc {
         self.get_did_doc_obj()
     }
 
-    fn get_did_method_parameters_map(
+    fn collect_did_method_parameters_map(
         &self,
-    ) -> impl TryInto<HashMap<String, Arc<DidMethodParameter>>> {
-        self.get_did_method_parameters_obj()
+    ) -> Result<HashMap<String, Arc<DidMethodParameter>>, DidResolverError> {
+        match self.get_did_method_parameters_obj().try_into() {
+            Ok(v) => Ok(v),
+            Err(err) => Err(DidResolverError::InvalidDidParameter(format!("{err}"))),
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::did_webvh::{WebVerifiableHistory, WebVerifiableHistoryDidLog};
-    use crate::errors::WebVerifiableHistoryErrorKind;
     use crate::test::assert_trust_did_web_error;
+    use did_sidekicks::errors::DidResolverErrorKind;
     use rstest::rstest;
     use std::fs;
     use std::path::Path;
@@ -1058,7 +1037,7 @@ mod test {
     ) -> Result<(), Box<dyn std::error::Error>> {
         assert_trust_did_web_error(
             WebVerifiableHistoryDidLog::try_from(did_log),
-            WebVerifiableHistoryErrorKind::DeserializationFailed,
+            DidResolverErrorKind::DeserializationFailed,
             error_string,
         );
         Ok(())
@@ -1068,71 +1047,71 @@ mod test {
     #[case(
         "test_data/manually_created/unhappy_path/invalid_scid.jsonl",
         "did:webvh:QmT7BM5RsM9SoaqAQKkNKHBzSEzpS2NRzT2oKaaaPYPpGr:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        WebVerifiableHistoryErrorKind::InvalidIntegrityProof,
+        DidResolverErrorKind::InvalidIntegrityProof,
         "invalid DID log integration proof: The SCID"
         )]
     #[case(
         "test_data/manually_created/unhappy_path/signed_with_unauthorized_key.jsonl",
         "did:webvh:QmT7BM5RsM9SoaqAQKkNKHBzSEzpS2NRzT2oKaaaPYPpGr:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        WebVerifiableHistoryErrorKind::InvalidIntegrityProof,
+        DidResolverErrorKind::InvalidIntegrityProof,
         "Key extracted from proof is not authorized for update"
     )]
     /* TODO Fix the (test) case
     #[case(
         "test_data/manually_created/unhappy_path/invalid_scid.jsonl",
         "did:webvh:QmT7BM5RsM9SoaqAQKkNKHBzSEzpS2NRzT2oKaaaPYPpGr:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        WebVerifiableHistoryErrorKind::DeserializationFailed,
+        DidResolverErrorKind::DeserializationFailed,
         "`versionTime` must be greater than the `versionTime` of the previous entry"
     )]
     */
     #[case(
         "test_data/generated_by_didtoolbox_java/unhappy_path/descending_version_datetime_did.jsonl",
         "did:webvh:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        WebVerifiableHistoryErrorKind::DeserializationFailed,
+        DidResolverErrorKind::DeserializationFailed,
         "`versionTime` must be greater than the `versionTime` of the previous entry"
     )]
     #[case(
         "test_data/generated_by_didtoolbox_java/unhappy_path/invalid_initial_version_number_did.jsonl",
         "did:webvh:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        WebVerifiableHistoryErrorKind::DeserializationFailed,
+        DidResolverErrorKind::DeserializationFailed,
         "Version numbers (`versionId`) must be in a sequence of positive consecutive integers"
     )]
     #[case(
         "test_data/generated_by_didtoolbox_java/unhappy_path/inconsecutive_version_numbers_did.jsonl",
         "did:webvh:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        WebVerifiableHistoryErrorKind::DeserializationFailed,
+        DidResolverErrorKind::DeserializationFailed,
         "Version numbers (`versionId`) must be in a sequence of positive consecutive integers"
     )]
     #[case(
         "test_data/generated_by_didtoolbox_java/unhappy_path/version_time_in_the_future_did.jsonl",
         "did:tdw:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        WebVerifiableHistoryErrorKind::DeserializationFailed,
+        DidResolverErrorKind::DeserializationFailed,
         "must be before the current datetime"
     )]
     /* TODO generate a proper (did:webvh) test case data using didtoolbox-java
     #[case(
         "test_data/generated_by_tdw_js/already_deactivated.jsonl",
         "did:tdw:QmdSU7F2rF8r4m6GZK7Evi2tthfDDxhw3NppU8pJMbd2hB:example.com",
-        TrustDidWebErrorKind::InvalidDidDocument,
+        DidResolverErrorKind::InvalidDidDocument,
         "This DID document is already deactivated"
     )]
     #[case(
         "test_data/generated_by_tdw_js/unhappy_path/not_authorized.jsonl",
         "did:tdw:QmXjp5qhSEvm8oXip43cDX62hZhHZdAMYv7Magy1tkffSz:example.com",
-        TrustDidWebErrorKind::InvalidIntegrityProof,
+        DidResolverErrorKind::InvalidIntegrityProof,
         "Key extracted from proof is not authorized for update"
     )]
     */
     fn test_read_invalid_did_log(
         #[case] did_log_raw_filepath: String,
         #[case] did_url: String,
-        #[case] error_kind: WebVerifiableHistoryErrorKind,
+        #[case] error_kind: DidResolverErrorKind,
         #[case] err_contains_pattern: String,
     ) {
         let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
 
         // CAUTION No ? operator required here as we want to inspect the expected error
-        let webvh = WebVerifiableHistory::read(did_url.clone(), did_log_raw);
+        let webvh = WebVerifiableHistory::resolve(did_url.clone(), did_log_raw);
 
         assert!(webvh.is_err());
         let err = webvh.err();

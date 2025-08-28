@@ -15,6 +15,7 @@ pub mod errors;
 
 // CAUTION All structs required by UniFFI bindings generator (declared in UDL) MUST also be "used" here
 use did_sidekicks::did_doc::*;
+use did_sidekicks::errors::DidResolverError;
 //use did_sidekicks::did_jsonschema::*;
 //use did_sidekicks::ed25519::*;
 use did_webvh::*;
@@ -32,6 +33,7 @@ mod test {
     use core::panic;
     use did_sidekicks::did_doc::*;
     use did_sidekicks::ed25519::*;
+    use did_sidekicks::errors::{DidResolverError, DidResolverErrorKind};
     use did_sidekicks::jcs_sha256_hasher::*;
     use did_sidekicks::vc_data_integrity::*;
     use rand::distributions::Alphanumeric;
@@ -160,8 +162,8 @@ mod test {
 
     /// A rather trivial assertion helper around WebVerfiableHistoryError.
     pub fn assert_trust_did_web_error<T>(
-        res: Result<T, WebVerifiableHistoryError>,
-        expected_kind: WebVerifiableHistoryErrorKind,
+        res: Result<T, DidResolverError>,
+        expected_kind: DidResolverErrorKind,
         error_contains: &str,
     ) {
         assert!(res.is_err());
@@ -354,7 +356,7 @@ mod test {
         let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath))?;
 
         // Read the newly did doc
-        let webvh_v1 = WebVerifiableHistory::read(did_url.clone(), did_log_raw)?;
+        let webvh_v1 = WebVerifiableHistory::resolve(did_url.clone(), did_log_raw)?;
         let did_doc_v1: JsonValue = serde_json::from_str(&webvh_v1.get_did_doc())?;
         let did_doc_obj_v1 = DidDoc::from_json(&webvh_v1.get_did_doc())?;
 

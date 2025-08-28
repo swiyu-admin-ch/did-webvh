@@ -14,7 +14,11 @@ typedef struct VerificationMethod;
 [External="did_sidekicks"]
 typedef interface DidMethodParameter;
 
-// Returned by `WebVerifiableHistory`'s method get_did_doc_obj
+// Thrown by `WebVerifiableHistory`'s constructor `resolve`
+[External="did_sidekicks"]
+typedef enum DidResolverError;
+
+// Returned by `WebVerifiableHistory`'s method `get_did_doc_obj`
 [External="did_sidekicks"]
 typedef interface DidDoc;
 
@@ -62,28 +66,6 @@ interface WebVerifiableHistoryId {
     string get_url();
 };
 
-/// The error accompanying `WebVerifiableHistory`.
-/// It might occur while calling some of the `WebVerifiableHistory` constructors/methods.
-[Error]
-enum WebVerifiableHistoryError {
-    /// DID method is not supported by this resolver.
-    "MethodNotSupported",
-    /// Invalid method-specific identifier.
-    "InvalidMethodSpecificId",
-    /// Failed to serialize DID document (to JSON).
-    "SerializationFailed",
-    /// The supplied did doc is invalid or contains an argument which isn't part of the did specification/recommendation.
-    "DeserializationFailed",
-    /// Invalid (or not yet supported) operation against DID doc.
-    "InvalidOperation",
-    /// Invalid DID parameter.
-    "InvalidDidParameter",
-    /// Invalid DID document.
-    "InvalidDidDocument",
-    /// Invalid DID log integration proof.
-    "InvalidDataIntegrityProof"
-};
-
 /// The container for any *valid* `did:webvh` DID log in terms of the
 /// Read (Resolve) DID method operation (for a `did:webvh` DID),
 /// as specified by https://identity.foundation/didwebvh/v1.0/#read-resolve
@@ -92,7 +74,7 @@ interface WebVerifiableHistory {
     /// "Read (Resolve) DID method operation" (for a `did:webvh` DID), as specified by https://identity.foundation/didwebvh/v1.0/#read-resolve
     ///
     /// In case of error/exception, all the detailed information required to narrow down the root cause are available as well.
-    [Name=read, Throws=WebVerifiableHistoryError]
+    [Name=resolve, Throws=DidResolverError]
     constructor(string did_webvh, string did_log);
     /// Delivers the fully qualified DID identifier of the DID log previously resolved in the constructor
     string get_did();

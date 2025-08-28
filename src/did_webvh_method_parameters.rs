@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-use crate::errors::*;
 use did_sidekicks::did_method_parameters::DidMethodParameter;
+use did_sidekicks::errors::DidResolverError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -93,18 +93,18 @@ impl WebVerifiableHistoryDidMethodParameters {
     ///
     /// Furthermore, the relevant Swiss profile checks are also taken into account here:
     /// https://github.com/e-id-admin/open-source-community/blob/main/tech-roadmap/swiss-profile.md#didtdwdidwebvh
-    pub fn validate_initial(&self) -> Result<(), WebVerifiableHistoryError> {
+    pub fn validate_initial(&self) -> Result<(), DidResolverError> {
         if let Some(method) = &self.method {
             // This item MAY appear in later DID log entries to indicate that the processing rules
             // for that and later entries have been changed to a different specification version.
             if method != DID_METHOD_PARAMETER_VERSION {
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(format!(
+                return Err(DidResolverError::InvalidDidParameter(format!(
                     "Invalid 'method' DID parameter. Expected '{DID_METHOD_PARAMETER_VERSION}'"
                 )));
             }
         } else {
             // This item MUST appear in the first DID log entry.
-            return Err(WebVerifiableHistoryError::InvalidDidParameter(
+            return Err(DidResolverError::InvalidDidParameter(
                 "Missing 'method' DID parameter. This item MUST appear in the first DID log entry."
                     .to_string(),
             ));
@@ -112,12 +112,12 @@ impl WebVerifiableHistoryDidMethodParameters {
 
         if let Some(scid) = &self.scid {
             if scid.is_empty() {
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(
+                return Err(DidResolverError::InvalidDidParameter(
                     "Invalid 'scid' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
                 ));
             }
         } else {
-            return Err(WebVerifiableHistoryError::InvalidDidParameter(
+            return Err(DidResolverError::InvalidDidParameter(
                 "Missing 'scid' DID parameter. This item MUST appear in the first DID log entry."
                     .to_string(),
             ));
@@ -125,12 +125,12 @@ impl WebVerifiableHistoryDidMethodParameters {
 
         if let Some(update_keys) = &self.update_keys {
             if update_keys.is_empty() {
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(
+                return Err(DidResolverError::InvalidDidParameter(
                     "Empty 'updateKeys' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
                 ));
             }
         } else {
-            return Err(WebVerifiableHistoryError::InvalidDidParameter(
+            return Err(DidResolverError::InvalidDidParameter(
                 "Missing 'updateKeys' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
             ));
         }
@@ -140,7 +140,7 @@ impl WebVerifiableHistoryDidMethodParameters {
         // - Must only contain valid base58 strings and valid multikeys
         if let Some(next_keys) = &self.next_keys {
             if next_keys.is_empty() {
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(
+                return Err(DidResolverError::InvalidDidParameter(
                     "The 'nextKeyHashes' DID parameter must be either None (omitted) or a non-empty list of strings.".to_string(),
                 ));
             }
@@ -155,7 +155,7 @@ impl WebVerifiableHistoryDidMethodParameters {
             if witness.threshold > 0 || !witness.witnesses.is_empty() {
                 // A witness item in the first DID log entry is used to define the witnesses and necessary threshold for that initial log entry.
                 // In all other DID log entries, a witness item becomes active after the publication of its entry.
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(
+                return Err(DidResolverError::InvalidDidParameter(
                     "Unsupported non-empty 'witness' DID parameter.".to_string(),
                 ));
             }
@@ -164,7 +164,7 @@ impl WebVerifiableHistoryDidMethodParameters {
         /* TODO Ensure validity of the "portable" DID parameter. Currently ignored/disabled for the sake of being able to use test vectors from third parties
         if let Some(portable) = self.portable {
             if portable {
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(
+                return Err(DidResolverError::InvalidDidParameter(
                     "Unsupported 'portable' DID parameter. We currently don't support portable DIDs".to_string(),
                 ));
             }
@@ -177,7 +177,7 @@ impl WebVerifiableHistoryDidMethodParameters {
     pub fn merge_from(
         &mut self,
         other: &WebVerifiableHistoryDidMethodParameters,
-    ) -> Result<(), WebVerifiableHistoryError> {
+    ) -> Result<(), DidResolverError> {
         let new_params = other.to_owned();
         let current_params = self.clone();
         self.method = match new_params.method {
@@ -185,7 +185,7 @@ impl WebVerifiableHistoryDidMethodParameters {
                 // This item MAY appear in later DID log entries to indicate that the processing rules
                 // for that and later entries have been changed to a different specification version.
                 if method != DID_METHOD_PARAMETER_VERSION {
-                    return Err(WebVerifiableHistoryError::InvalidDidParameter(
+                    return Err(DidResolverError::InvalidDidParameter(
                         format!("Invalid 'method' DID parameter. Expected '{DID_METHOD_PARAMETER_VERSION}'.")
                     ));
                 }
@@ -197,7 +197,7 @@ impl WebVerifiableHistoryDidMethodParameters {
         self.scid = match new_params.scid {
             Some(scid) => {
                 if current_params.scid.is_none_or(|x| x != scid) {
-                    return Err(WebVerifiableHistoryError::InvalidDidParameter(
+                    return Err(DidResolverError::InvalidDidParameter(
                         "Invalid 'scid' DID parameter. The 'scid' parameter is not allowed to change."
                         .to_string(),
                     ));
@@ -214,7 +214,7 @@ impl WebVerifiableHistoryDidMethodParameters {
         self.witnesses = match new_params.witnesses {
             Some(witness) => {
                 if witness.threshold > 0 || !witness.witnesses.is_empty() {
-                    return Err(WebVerifiableHistoryError::InvalidDidParameter(
+                    return Err(DidResolverError::InvalidDidParameter(
                         "Unsupported non-empty 'witnesses' DID parameter.".to_string(),
                     ));
                 }
@@ -229,10 +229,10 @@ impl WebVerifiableHistoryDidMethodParameters {
         self.watchers = new_params.watchers.or(current_params.watchers);
 
         self.portable = match (current_params.portable, new_params.portable) {
-            (Some(true), Some(true)) => return Err(WebVerifiableHistoryError::InvalidDidParameter(
+            (Some(true), Some(true)) => return Err(DidResolverError::InvalidDidParameter(
                 "Unsupported 'portable' DID parameter. We currently don't support portable dids".to_string(),
             )),
-            (_, Some(true)) =>  return Err(WebVerifiableHistoryError::InvalidDidParameter(
+            (_, Some(true)) =>  return Err(DidResolverError::InvalidDidParameter(
                 "Invalid 'portable' DID parameter. The value can ONLY be set to true in the first log entry, the initial version of the DID.".to_string(),
             )),
             (_, Some(false)) => Some(false),
@@ -241,7 +241,7 @@ impl WebVerifiableHistoryDidMethodParameters {
         };
 
         self.deactivated = match (current_params.deactivated, new_params.deactivated) {
-            (Some(true), _) => return Err(WebVerifiableHistoryError::InvalidDidDocument(
+            (Some(true), _) => return Err(DidResolverError::InvalidDidDocument(
                 "This DID document is already deactivated. Therefore no additional DID logs are allowed.".to_string()
             )),
             (_, Some(deactivate)) => Some(deactivate),
@@ -259,12 +259,12 @@ impl WebVerifiableHistoryDidMethodParameters {
         self.deactivated = Some(true);
     }
 
-    pub fn from_json(json_content: &str) -> Result<Self, WebVerifiableHistoryError> {
+    pub fn from_json(json_content: &str) -> Result<Self, DidResolverError> {
         let did_method_parameters: WebVerifiableHistoryDidMethodParameters =
             match serde_json::from_str(json_content) {
                 Ok(did_method_parameters) => did_method_parameters,
                 Err(err) => {
-                    return Err(WebVerifiableHistoryError::DeserializationFailed(format!(
+                    return Err(DidResolverError::DeserializationFailed(format!(
                         "Error parsing DID method parameters: {err}"
                     )));
                 }
@@ -304,7 +304,7 @@ impl WebVerifiableHistoryDidMethodParameters {
 }
 
 impl TryInto<HashMap<String, Arc<DidMethodParameter>>> for WebVerifiableHistoryDidMethodParameters {
-    type Error = WebVerifiableHistoryError;
+    type Error = DidResolverError;
 
     /// Conversion of [`WebVerifiableHistoryDidMethodParameters`] into map of [`DidMethodParameter`] objects.
     ///
@@ -315,21 +315,13 @@ impl TryInto<HashMap<String, Arc<DidMethodParameter>>> for WebVerifiableHistoryD
         // MUST appear in the first DID log entry
         let method = match DidMethodParameter::new_string_from_option("method", params.method) {
             Ok(v) => v,
-            Err(err) => {
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(format!(
-                    "{err}"
-                )))
-            }
+            Err(err) => return Err(DidResolverError::InvalidDidParameter(format!("{err}"))),
         };
 
         // MUST appear in the first log entry. MUST NOT appear in later log entries
         let scid = match DidMethodParameter::new_string_from_option("scid", params.scid) {
             Ok(v) => v,
-            Err(err) => {
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(format!(
-                    "{err}"
-                )))
-            }
+            Err(err) => return Err(DidResolverError::InvalidDidParameter(format!("{err}"))),
         };
 
         // This property MUST appear in the first log entry and MAY appear in subsequent entries
@@ -338,11 +330,7 @@ impl TryInto<HashMap<String, Arc<DidMethodParameter>>> for WebVerifiableHistoryD
             params.update_keys,
         ) {
             Ok(v) => v,
-            Err(err) => {
-                return Err(WebVerifiableHistoryError::InvalidDidParameter(format!(
-                    "{err}"
-                )))
-            }
+            Err(err) => return Err(DidResolverError::InvalidDidParameter(format!("{err}"))),
         };
 
         Ok(HashMap::from([
@@ -403,12 +391,11 @@ mod test {
     use crate::did_webvh_method_parameters::{
         WebVerifiableHistoryDidMethodParameters, Witness, DID_METHOD_PARAMETER_VERSION,
     };
-    use crate::errors::WebVerifiableHistoryErrorKind;
     use crate::test::assert_trust_did_web_error;
     use did_sidekicks::did_method_parameters::DidMethodParameter;
+    use did_sidekicks::errors::DidResolverErrorKind;
     use rstest::rstest;
     use std::collections::HashMap;
-    use std::ops::Deref;
     use std::sync::Arc;
 
     #[rstest]
@@ -426,13 +413,13 @@ mod test {
         params.method = Some("invalidVersion".to_string());
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Invalid 'method' DID parameter.",
         );
         params.method = None;
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Missing 'method' DID parameter.",
         );
 
@@ -441,13 +428,13 @@ mod test {
         params.scid = Some("".to_string());
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Invalid 'scid' DID parameter.",
         );
         params.scid = None;
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Missing 'scid' DID parameter.",
         );
 
@@ -456,13 +443,13 @@ mod test {
         params.update_keys = Some(vec![]);
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Empty 'updateKeys' DID parameter.",
         );
         params.update_keys = None;
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Missing 'updateKeys' DID parameter.",
         );
 
@@ -471,7 +458,7 @@ mod test {
         params.portable = Some(true);
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Unsupported 'portable' DID parameter",
         );
         */
@@ -485,7 +472,7 @@ mod test {
         params.next_keys = Some(vec![]);
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "The 'nextKeyHashes' DID parameter must be either None (omitted) or a non-empty list of strings",
         );
         params.next_keys = Some(vec!["some_valid_key".to_string()]);
@@ -501,7 +488,7 @@ mod test {
         });
         assert_trust_did_web_error(
             params.validate_initial(),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Unsupported non-empty 'witness' DID parameter.",
         );
         params.witnesses = Some(Witness {
@@ -530,7 +517,7 @@ mod test {
         new_params.method = Some("invalidVersion".to_string());
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Invalid 'method' DID parameter.",
         );
         new_params.method = None;
@@ -542,7 +529,7 @@ mod test {
         new_params.scid = Some("otherSCID".to_string());
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Invalid 'scid' DID parameter.",
         );
         new_params.scid = None;
@@ -579,7 +566,7 @@ mod test {
         });
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Unsupported non-empty 'witnesses' DID parameter.",
         );
         new_params.witnesses = Some(Witness {
@@ -607,7 +594,7 @@ mod test {
         new_params.portable = Some(true);
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Invalid 'portable' DID parameter.",
         );
         new_params.portable = Some(false);
@@ -618,7 +605,7 @@ mod test {
         old_params.portable = Some(true);
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
-            WebVerifiableHistoryErrorKind::InvalidDidParameter,
+            DidResolverErrorKind::InvalidDidParameter,
             "Unsupported 'portable' DID parameter.",
         );
     }
