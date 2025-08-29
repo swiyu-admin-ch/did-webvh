@@ -2,55 +2,42 @@
 namespace did_webvh {
 };
 
-[ExternalInterface="did_sidekicks"]
-typedef extern Ed25519Signature;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern Ed25519SigningKey;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern Ed25519VerifyingKey;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern Ed25519KeyPair;
-
+// Thrown by `WebVerifiableHistory`'s constructor `resolve`
 [External="did_sidekicks"]
-typedef extern Jwk;
+typedef enum DidResolverError;
 
+// Returned by `WebVerifiableHistory`'s method `get_did_doc_obj`
 [External="did_sidekicks"]
-typedef extern VerificationType;
+typedef interface DidDoc;
 
-[External="did_sidekicks"]
-typedef extern VerificationMethod;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern DidDoc;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern DidLogEntryValidatorError;
-
-[ExternalInterface="did_sidekicks"]
-typedef extern DidLogEntryValidator;
-
-/// The error accompanying TrustDidWebId.
-/// It might occur while calling TrustDidWebId methods.
+/// The error accompanying `WebVerifiableHistoryId`.
+/// It might occur while calling `WebVerifiableHistoryId` methods.
 [Error]
-enum TrustDidWebIdResolutionError {
+enum WebVerifiableHistoryIdResolutionError {
     /// DID method is not supported by this resolver.
     "MethodNotSupported",
     /// Invalid method-specific identifier.
     "InvalidMethodSpecificId"
 };
 
+interface WebVerifiableHistoryDidMethodParameters {
+    /// Returns the SCID part from the supplied DID.
+    string get_scid();
+    ///
+    sequence<string> get_update_keys();
+    ///
+    boolean is_deactivated();
+};
+
 /// Represents a DID WEBVH, as specified at https://identity.foundation/didwebvh/v1.0/#method-specific-identifier:
 ///
 /// "The did:webvh method-specific identifier contains both the self-certifying identifier (SCID) for the DID,
 /// and a fully qualified domain name (with an optional path) that is secured by a TLS/SSL certificate."
-interface TrustDidWebId {
+interface WebVerifiableHistoryId {
     /// The only (non-empty) constructor in charge of DID parsing.
     ///
     /// CAUTION Calling any of the available getters should take place after this method is called, not earlier.
-    [Name=parse_did_webvh, Throws=TrustDidWebIdResolutionError]
+    [Name=parse_did_webvh, Throws=WebVerifiableHistoryIdResolutionError]
     constructor(string did_webvh);
     /// Returns the SCID part from the supplied DID.
     string get_scid();
@@ -58,55 +45,37 @@ interface TrustDidWebId {
     string get_url();
 };
 
-/// The error accompanying TrustDidWeb.
-/// It might occur while calling TrustDidWeb methods.
-[Error]
-enum TrustDidWebError {
-    /// DID method is not supported by this resolver.
-    "MethodNotSupported",
-    /// Invalid method-specific identifier.
-    "InvalidMethodSpecificId",
-    /// Failed to serialize DID document (to JSON).
-    "SerializationFailed",
-    /// The supplied did doc is invalid or contains an argument which isn't part of the did specification/recommendation.
-    "DeserializationFailed",
-    /// Invalid (or not yet supported) operation against DID doc.
-    "InvalidOperation",
-    /// Invalid DID parameter.
-    "InvalidDidParameter",
-    /// Invalid DID document.
-    "InvalidDidDocument",
-    /// Invalid DID log integration proof.
-    "InvalidDataIntegrityProof"
-};
-
-interface TrustDidWeb {
-    [Name=read, Throws=TrustDidWebError]
+/// The container for any *valid* `did:webvh` DID log in terms of the
+/// Read (Resolve) DID method operation (for a `did:webvh` DID),
+/// as specified by https://identity.foundation/didwebvh/v1.0/#read-resolve
+interface WebVerifiableHistory {
+    /// The single constructor of `WebVerifiableHistory` implementing the
+    /// "Read (Resolve) DID method operation" (for a `did:webvh` DID), as specified by https://identity.foundation/didwebvh/v1.0/#read-resolve
+    ///
+    /// In case of error/exception, all the detailed information required to narrow down the root cause are available as well.
+    [Name=resolve, Throws=DidResolverError]
     constructor(string did_webvh, string did_log);
+    /// Delivers the fully qualified DID identifier of the DID log previously resolved in the constructor
     string get_did();
+    /// Delivers the very same DID log previously resolved in the constructor
     string get_did_log();
+    /// Delivers the fully qualified DID document (as `String`) contained within the DID log previously resolved in the constructor
     string get_did_doc();
-    [Throws=TrustDidWebError]
-    DidDoc get_did_doc_obj();
-};
-
-interface DidDocumentState {
-    [Name=from, Throws=TrustDidWebError]
-    constructor(string did_log);
-    [Throws=TrustDidWebError]
-    DidDoc validate();
-    [Throws=TrustDidWebError]
-    DidDoc validate_with_scid(string? scid);
+    ///
+    WebVerifiableHistoryDidMethodParameters get_did_method_parameters();
+    /// Delivers the fully qualified DID document (as `DidDoc`) contained within the DID log previously resolved in the constructor
+    ///[Throws=WebVerifiableHistoryError]
+    DidDoc get_did_doc_obj_thread_safe();
 };
 
 /// W.r.t. corresponding specification version available at https://identity.foundation/didwebvh
 ///
-/// # CAUTION The single currently supported `didwebvh` specification version is: v0.3
-enum DidLogEntryJsonSchema {
-    /// As defined by https://identity.foundation/didwebvh/v0.3 but w.r.t. (eID-conformity) addendum:
-    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check
-    /// - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Doc+Conformity+Check
-    "V03EidConform",
-    /// As (strictly) specified by https://identity.foundation/didwebvh/v0.3
-    "V03",
+/// # CAUTION The single currently supported `didwebvh` specification version is: v1.0
+enum WebVerifiableHistoryDidLogEntryJsonSchema {
+    /// As defined by https://identity.foundation/didwebvh/v1.0 but w.r.t. (eID-conformity) addendum:
+    /// - https://confluence.bit.admin.ch/x/r_0EMw (DID Log Conformity Check)
+    /// - https://confluence.bit.admin.ch/x/3e0EMw (DID Doc Conformity Check)
+	 "V1_0EidConform",
+    /// As (strictly) specified by https://identity.foundation/didwebvh/v1.0
+	 "V1_0",
 };
