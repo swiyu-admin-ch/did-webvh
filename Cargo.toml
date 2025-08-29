@@ -28,7 +28,7 @@ thiserror = "2.0.16"
 url = "2.5.4"
 rust-embed = { version = "8.7.2" , features = ["include-exclude", "compression"]}
 rayon = "1.11.0"
-did_sidekicks = { git = "https://github.com/swiyu-admin-ch/did-sidekicks.git", tag = "1.0.0" }
+did_sidekicks = { git = "https://github.com/swiyu-admin-ch/did-sidekicks.git", branch = "build/kotlin-android" }
 #did_sidekicks = { path = "../did-sidekicks" }
 
 [build-dependencies]
