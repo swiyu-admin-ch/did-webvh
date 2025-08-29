@@ -53,7 +53,7 @@ pub fn criterion_benchmark_did_webvh(c: &mut Criterion) {
 
                 let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
 
-                if let Some(err) = WebVerifiableHistory::read(black_box(did_url.to_string()), black_box(did_log_raw)).err() {
+                if let Some(err) = WebVerifiableHistory::resolve(black_box(did_url.to_string()), black_box(did_log_raw)).err() {
                     panic!("{}", err.to_string());
                 }
             })

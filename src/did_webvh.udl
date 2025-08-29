@@ -2,18 +2,6 @@
 namespace did_webvh {
 };
 
-[External="did_sidekicks"]
-typedef struct Jwk;
-
-[External="did_sidekicks"]
-typedef enum VerificationType;
-
-[External="did_sidekicks"]
-typedef struct VerificationMethod;
-
-[External="did_sidekicks"]
-typedef interface DidMethodParameter;
-
 // Thrown by `WebVerifiableHistory`'s constructor `resolve`
 [External="did_sidekicks"]
 typedef enum DidResolverError;
@@ -21,15 +9,6 @@ typedef enum DidResolverError;
 // Returned by `WebVerifiableHistory`'s method `get_did_doc_obj`
 [External="did_sidekicks"]
 typedef interface DidDoc;
-
-[External="did_sidekicks"]
-typedef trait DidLogEntryJsonSchema;
-
-[External="did_sidekicks"]
-typedef enum DidLogEntryValidatorError;
-
-[External="did_sidekicks"]
-typedef struct DidLogEntryValidator;
 
 /// The error accompanying `WebVerifiableHistoryId`.
 /// It might occur while calling `WebVerifiableHistoryId` methods.
