@@ -19,10 +19,7 @@ Cargo.lock
 # Added by cargo
 
 /target
-did_server/.venv/
-did_server/__pycache__/
 /bindings
-did_server/bindings
 .idea/*
 
 # Ignore Mac DS_Store files
