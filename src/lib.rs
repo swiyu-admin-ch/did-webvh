@@ -17,8 +17,8 @@ pub mod errors;
 use did_sidekicks::did_doc::*;
 use did_sidekicks::errors::DidResolverError;
 use did_webvh::*;
-use did_webvh_method_parameters::*;
 use did_webvh_jsonschema::*;
+use did_webvh_method_parameters::*;
 use errors::*;
 
 uniffi::include_scaffolding!("did_webvh");
@@ -79,6 +79,34 @@ mod test {
         "did:webvh:{SCID}:jp納豆.例.jp:用户",
         "https://xn--jp-cd2fp15c.xn--fsq.jp/%E7%94%A8%E6%88%B7/did.jsonl"
     )]
+    #[case( // path with null
+        "did:webvh:{SCID}:example.com:\0:test",
+        "https://example.com/%00/test/did.jsonl"
+    )]
+    #[case( // path with accents
+        "did:webvh:{SCID}:example.com:ar̷̠̗̠͙̜̘͚̼͖̗̯̥̥͙̜͊̈́͆́̽̆̔̏̓͌͑t",
+        "https://example.com/ar%CC%B7%CC%A0%CC%97%CC%A0%CD%99%CC%9C%CC%98%CD%9A%CC%BC%CD%96%CC%97%CC%AF%CC%A5%CC%A5%CD%99%CC%9C%CD%8A%CC%88%CC%81%CD%86%CC%81%CC%BD%CC%86%CC%94%CC%8F%CC%93%CD%8C%CD%91t/did.jsonl"
+    )]
+    #[case( // domain accents
+        "did:webvh:{SCID}:ar̷̠̗̠͙̜̘͚̼͖̗̯̥̥͙̜͊̈́͆́̽̆̔̏̓͌͑t.com",
+        "https://xn--art-ldca4al3dubi2aam9cc3db7ga2r5fte5a8stdvcxh5erdiy.com/.well-known/did.jsonl"
+    )]
+    #[case( // domain with emoji
+        "did:webvh:{SCID}:I❤You.com",
+        "https://xn--iyou-lw4b.com/.well-known/did.jsonl"
+    )]
+    #[case( // ip v4 address
+        "did:webvh:{SCID}:0.0.0.0",
+        "https://0.0.0.0/.well-known/did.jsonl"
+    )]
+    #[case(
+        "did:webvh:QMySCID:example%2Ecom",
+        "https://example.com/.well-known/did.jsonl"
+    )]
+    #[case(
+        "did:webvh:QMySCID:ampl.com%3A",
+        "https://ampl.com/.well-known/did.jsonl"
+    )]
     #[case(
         "did:webvh:QMySCID:localhost%3A8000:123:456",
         "https://localhost:8000/123/456/did.jsonl"
@@ -117,6 +145,26 @@ mod test {
         let webvh = WebVerifiableHistoryId::parse_did_webvh(webvh).unwrap();
         let resolved_url = webvh.get_url();
         assert_eq!(resolved_url, url)
+    }
+
+    #[rstest]
+    #[case("did:webvh:QMySCID::test")]
+    #[case("did:webvh:QMySCID:.")]
+    #[case("did:webvh:QMySCID:\0:test")]
+    #[case("did:webvh:QMySCID:example\0:test")]
+    #[case("did:webvh:QMySCID:example.")]
+    #[case("did:webvh:QMySCID:my\0invalid.url:test")]
+    #[case("did:webvh:QMySCID:0.0.0.256:test")]
+    #[case("did:webvh:QMySCID:ampl.com%3B")]
+    #[case("did:webvh:QMySCID:ampl.com%2Ftest")]
+    #[case("did:webvh:{SCID}:[0:0::1]")] // ip v6 address
+    fn test_webvh_to_url_conversion_invalid(#[case] webvh: String) {
+        let res = WebVerifiableHistoryId::parse_did_webvh(webvh);
+        assert!(
+            res.is_err(),
+            "URL '{}' should be invalid",
+            res.unwrap().get_url()
+        );
     }
 
     #[rstest]
