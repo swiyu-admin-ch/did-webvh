@@ -37,6 +37,12 @@ pub const DID_LOG_ENTRY_PARAMETERS: &str = "parameters";
 pub const DID_LOG_ENTRY_STATE: &str = "state";
 pub const DID_LOG_ENTRY_PROOF: &str = "proof";
 
+/// Regex to check if a domain follows the assumption described in https://www.rfc-editor.org/rfc/rfc952.html
+/// Allowed are lowercase letters (a-z), digits (0-9) dash (-) and period (.). Periods are only allowed to
+/// delimit components.
+static DOMAIN_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[\-a-z0-9]+(\.[\-a-z0-9]+)*$").unwrap());
+
 /// Entry in a did log file as shown here
 /// https://identity.foundation/didwebvh/v1.0/#term:did-log-entry
 #[derive(Serialize, Debug, Clone)]
@@ -767,6 +773,19 @@ impl TryFrom<String> for WebVerifiableHistoryId {
                 )
             }
         };
+
+        // Verify that the host is a valid domain. 
+        // Special characters were encoded by `Url::parse`.
+        // URL without domain, that instead use an ip address are already validated in step 5
+        if let url::Origin::Tuple(_, url::Host::Domain(domain), _) = url.origin() {
+            if DOMAIN_REGEX.captures(domain.as_str()).is_none() {
+                return Err(
+                    WebVerifiableHistoryIdResolutionError::InvalidMethodSpecificId(
+                        "Domain of provided DID is invalid".to_string(),
+                    ),
+                );
+            }
+        }
 
         // append '/did.jsonl' to complete the URL.
         match url.path_segments_mut() {
