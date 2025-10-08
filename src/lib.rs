@@ -14,16 +14,36 @@ pub mod did_webvh_method_parameters;
 pub mod errors;
 
 // CAUTION All structs required by UniFFI bindings generator (declared in UDL) MUST also be "used" here
+#[allow(unused_imports, reason = "required by the UniFFI compiler!")]
+#[expect(clippy::allow_attributes, reason = "..")]
 use did_sidekicks::did_doc::*;
+#[allow(unused_imports, reason = "required by the UniFFI compiler!")]
+#[expect(clippy::allow_attributes, reason = "..")]
 use did_sidekicks::errors::DidResolverError;
+#[allow(unused_imports, reason = "required by the UniFFI compiler!")]
+#[expect(clippy::allow_attributes, reason = "..")]
 use did_webvh::*;
+#[allow(unused_imports, reason = "required by the UniFFI compiler!")]
+#[expect(clippy::allow_attributes, reason = "..")]
 use did_webvh_jsonschema::*;
+#[allow(unused_imports, reason = "required by the UniFFI compiler!")]
+#[expect(clippy::allow_attributes, reason = "..")]
 use did_webvh_method_parameters::*;
+#[allow(unused_imports, reason = "required by the UniFFI compiler!")]
+#[expect(clippy::allow_attributes, reason = "..")]
 use errors::*;
 
 uniffi::include_scaffolding!("did_webvh");
 
 #[cfg(test)]
+#[expect(
+    clippy::unwrap_used,
+    reason = "unwrap calls are panic-safe as long as test case setup is correct"
+)]
+#[expect(
+    clippy::panic,
+    reason = "no panic expected as long as test case setup is correct"
+)]
 mod test {
     use super::did_webvh::*;
     use crate::errors::*;
@@ -142,8 +162,8 @@ mod test {
         "https://localhost/.hidden/did.jsonl"
     )]
     fn test_webvh_to_url_conversion(#[case] webvh: String, #[case] url: String) {
-        let webvh = WebVerifiableHistoryId::parse_did_webvh(webvh).unwrap();
-        let resolved_url = webvh.get_url();
+        let webvh_id = WebVerifiableHistoryId::parse_did_webvh(webvh).unwrap();
+        let resolved_url = webvh_id.get_url();
         assert_eq!(resolved_url, url)
     }
 
@@ -228,7 +248,7 @@ mod test {
     }
 
     #[rstest]
-    fn test_cryptosuite_add_and_verify_proof() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_cryptosuite_add_and_verify_proof() {
         // From https://www.w3.org/TR/vc-di-eddsa/#example-credential-without-proof-0
         let credential_without_proof = json!(
             {
@@ -257,26 +277,34 @@ mod test {
         let options = CryptoSuiteProofOptions::new(
             None,
             Some(DateTime::parse_from_rfc3339("2023-02-24T23:36:38Z").unwrap().to_utc()),
-            "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2".to_string(),
-            Some("assertionMethod".to_string()),
+            "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2".to_owned(),
+            Some("assertionMethod".to_owned()),
             Some(vec![
-                "https://www.w3.org/ns/credentials/v2".to_string(),
-                "https://www.w3.org/ns/credentials/examples/v2".to_string(),
+                "https://www.w3.org/ns/credentials/v2".to_owned(),
+                "https://www.w3.org/ns/credentials/examples/v2".to_owned(),
             ]),
             format!("1-{}", scid),
         );
 
         // From https://www.w3.org/TR/vc-di-eddsa/#example-private-and-public-keys-for-signature-1
         let suite = did_sidekicks::vc_data_integrity::EddsaJcs2022Cryptosuite {
-            verifying_key: Some(Ed25519VerifyingKey::from_multibase(
-                "z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
-            )?),
-            signing_key: Some(Ed25519SigningKey::from_multibase(
-                "z3u2en7t5LR2WtQH5PfFqMqwVHBeXouLzo6haApm8XHqvjxq",
-            )?),
+            verifying_key: Some(
+                Ed25519VerifyingKey::from_multibase(
+                    "z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+                )
+                .unwrap(),
+            ),
+            signing_key: Some(
+                Ed25519SigningKey::from_multibase(
+                    "z3u2en7t5LR2WtQH5PfFqMqwVHBeXouLzo6haApm8XHqvjxq",
+                )
+                .unwrap(),
+            ),
         };
 
-        let secured_document = suite.add_proof(&credential_without_proof, &options)?;
+        let secured_document = suite
+            .add_proof(&credential_without_proof, &options)
+            .unwrap();
 
         assert!(
             !secured_document.is_null(),
@@ -292,7 +320,9 @@ mod test {
         //         is irrelevant here since the add_proof method also computes a proof's challenge (if not supplied already)
         assert!(proof_value.to_string().contains("z3swhrb2DFocc562PATcKiv8YtjUzxLdfr4dhb9DidvG2BNkJqAXe65bsEMiNJdGKDdnYxiBa7cKXXw4cSKCvMcfm"));
 
-        let doc_hash = JcsSha256Hasher::default().encode_hex(&credential_without_proof)?;
+        let doc_hash = JcsSha256Hasher::default()
+            .encode_hex(&credential_without_proof)
+            .unwrap();
         // From https://www.w3.org/TR/vc-di-eddsa/#example-hash-of-canonical-credential-without-proof-hex-0
         assert_eq!(
             "59b7cb6251b8991add1ce0bc83107e3db9dbbab5bd2c28f687db1a03abc92f19",
@@ -300,28 +330,25 @@ mod test {
         );
 
         // sanity check
-        let proof_as_string = serde_json::to_string(proof)?;
-        let data_integrity_proof = DataIntegrityProof::from(proof_as_string)?;
+        let proof_as_string = serde_json::to_string(proof).unwrap();
+        let data_integrity_proof = DataIntegrityProof::from(proof_as_string).unwrap();
         assert!(
             suite.verify_proof(&data_integrity_proof, &doc_hash).is_ok(),
             "Sanity check failed"
         );
-
-        Ok(())
     }
 
     #[rstest]
     #[case("test_data/manually_created/2_log_entries.jsonl")]
-    fn test_generate_version_id(
-        #[case] did_log_raw_filepath: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath))?;
-        let did_document = WebVerifiableHistoryDidLog::try_from(did_log_raw)?;
+    fn test_generate_version_id(#[case] did_log_raw_filepath: String) {
+        let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
+        let did_document = WebVerifiableHistoryDidLog::try_from(did_log_raw).unwrap();
         for did_log in did_document.did_log_entries {
-            let hash = did_log.calculate_entry_hash()?;
-            assert!(hash == did_log.version.hash);
+            let did_log_res = did_log.calculate_entry_hash();
+            assert!(did_log_res.is_ok());
+            let hash = did_log_res.unwrap(); // panic-safe (see the previous line)
+            assert_eq!(hash, did_log.version.hash);
         }
-        Ok(())
     }
 
     #[rstest]
@@ -395,16 +422,13 @@ mod test {
         "test_data/generated_by_didtoolbox_java/v400_did.jsonl",
         "did:webvh:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
     )]
-    fn test_read_did_webvh(
-        #[case] did_log_raw_filepath: String,
-        #[case] did_url: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath))?;
+    fn test_read_did_webvh(#[case] did_log_raw_filepath: String, #[case] did_url: String) {
+        let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
 
         // Read the newly did doc
-        let webvh_v1 = WebVerifiableHistory::resolve(did_url.clone(), did_log_raw)?;
-        let did_doc_v1: JsonValue = serde_json::from_str(&webvh_v1.get_did_doc())?;
-        let did_doc_obj_v1 = DidDoc::from_json(&webvh_v1.get_did_doc())?;
+        let webvh_v1 = WebVerifiableHistory::resolve(did_url.clone(), did_log_raw).unwrap();
+        let did_doc_v1: JsonValue = serde_json::from_str(&webvh_v1.get_did_doc()).unwrap();
+        let did_doc_obj_v1 = DidDoc::from_json(&webvh_v1.get_did_doc()).unwrap();
 
         assert!(!did_doc_v1["@context"].to_string().is_empty());
         match did_doc_v1["id"] {
@@ -421,8 +445,6 @@ mod test {
         assert!(!did_doc_obj_v1.verification_method.is_empty());
         assert!(!did_doc_obj_v1.authentication.is_empty());
         assert!(did_doc_obj_v1.controller.is_empty());
-
-        Ok(())
     }
 
     /* TODO implement the test case using proper input
