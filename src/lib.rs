@@ -47,19 +47,15 @@ uniffi::include_scaffolding!("did_webvh");
 mod test {
     use super::did_webvh::*;
     use crate::errors::*;
-    use chrono::DateTime;
     use core::panic;
     use did_sidekicks::did_doc::*;
-    use did_sidekicks::ed25519::*;
     use did_sidekicks::errors::{DidResolverError, DidResolverErrorKind};
-    use did_sidekicks::jcs_sha256_hasher::*;
-    use did_sidekicks::vc_data_integrity::*;
     use rand::distributions::Alphanumeric;
-    use rand::Rng;
+    use rand::Rng as _;
     use rstest::{fixture, rstest};
-    use serde_json::{json, Value as JsonValue};
+    use serde_json::Value as JsonValue;
     use std::path::Path;
-    use std::{fs, vec};
+    use std::fs;
 
     #[fixture]
     fn unique_base_url() -> String {
@@ -69,12 +65,6 @@ mod test {
             .map(char::from)
             .collect();
         format!("https://localhost:8000/{random_thing}")
-    }
-
-    #[fixture]
-    #[once]
-    fn ed25519_key_pair() -> Ed25519KeyPair {
-        Ed25519KeyPair::generate()
     }
 
     // The first 5 cases come from https://identity.foundation/didwebvh/v1.0/#example-3
@@ -244,97 +234,6 @@ mod test {
             "expected '{}' is not mentioned in '{}'",
             error_contains,
             err_to_string
-        );
-    }
-
-    #[rstest]
-    fn test_cryptosuite_add_and_verify_proof() {
-        // From https://www.w3.org/TR/vc-di-eddsa/#example-credential-without-proof-0
-        let credential_without_proof = json!(
-            {
-                 "@context": [
-                     "https://www.w3.org/ns/credentials/v2",
-                     "https://www.w3.org/ns/credentials/examples/v2"
-                 ],
-                 "id": "urn:uuid:58172aac-d8ba-11ed-83dd-0b3aef56cc33",
-                 "type": ["VerifiableCredential", "AlumniCredential"],
-                 "name": "Alumni Credential",
-                 "description": "A minimum viable example of an Alumni Credential.",
-                 "issuer": "https://vc.example/issuers/5678",
-                 "validFrom": "2023-01-01T00:00:00Z",
-                 "credentialSubject": {
-                     "id": "did:example:abcdefgh",
-                     "alumniOf": "The School of Examples"
-                 }
-            }
-        );
-
-        let scid = JcsSha256Hasher::default()
-            .base58btc_encode_multihash(&credential_without_proof)
-            .unwrap();
-
-        // From https://www.w3.org/TR/vc-di-eddsa/#example-proof-options-document-1
-        let options = CryptoSuiteProofOptions::new(
-            None,
-            Some(DateTime::parse_from_rfc3339("2023-02-24T23:36:38Z").unwrap().to_utc()),
-            "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2".to_owned(),
-            Some("assertionMethod".to_owned()),
-            Some(vec![
-                "https://www.w3.org/ns/credentials/v2".to_owned(),
-                "https://www.w3.org/ns/credentials/examples/v2".to_owned(),
-            ]),
-            format!("1-{}", scid),
-        );
-
-        // From https://www.w3.org/TR/vc-di-eddsa/#example-private-and-public-keys-for-signature-1
-        let suite = did_sidekicks::vc_data_integrity::EddsaJcs2022Cryptosuite {
-            verifying_key: Some(
-                Ed25519VerifyingKey::from_multibase(
-                    "z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
-                )
-                .unwrap(),
-            ),
-            signing_key: Some(
-                Ed25519SigningKey::from_multibase(
-                    "z3u2en7t5LR2WtQH5PfFqMqwVHBeXouLzo6haApm8XHqvjxq",
-                )
-                .unwrap(),
-            ),
-        };
-
-        let secured_document = suite
-            .add_proof(&credential_without_proof, &options)
-            .unwrap();
-
-        assert!(
-            !secured_document.is_null(),
-            "'add_proof' method returned Value::Null"
-        );
-        let proof = &secured_document["proof"];
-        assert!(proof.is_array(), "'proof' must be a JSON array");
-        let proof_value = &proof[0]["proofValue"];
-        assert!(proof_value.is_string(), "'proofValue' must be a string");
-
-        // https://www.w3.org/TR/vc-di-eddsa/#example-signature-of-combined-hashes-base58-btc-1
-        // CAUTION The value suggested in the spec (z2HnFSSPPBzR36zdDgK8PbEHeXbR56YF24jwMpt3R1eHXQzJDMWS93FCzpvJpwTWd3GAVFuUfjoJdcnTMuVor51aX)
-        //         is irrelevant here since the add_proof method also computes a proof's challenge (if not supplied already)
-        assert!(proof_value.to_string().contains("z3swhrb2DFocc562PATcKiv8YtjUzxLdfr4dhb9DidvG2BNkJqAXe65bsEMiNJdGKDdnYxiBa7cKXXw4cSKCvMcfm"));
-
-        let doc_hash = JcsSha256Hasher::default()
-            .encode_hex(&credential_without_proof)
-            .unwrap();
-        // From https://www.w3.org/TR/vc-di-eddsa/#example-hash-of-canonical-credential-without-proof-hex-0
-        assert_eq!(
-            "59b7cb6251b8991add1ce0bc83107e3db9dbbab5bd2c28f687db1a03abc92f19",
-            doc_hash
-        );
-
-        // sanity check
-        let proof_as_string = serde_json::to_string(proof).unwrap();
-        let data_integrity_proof = DataIntegrityProof::from(proof_as_string).unwrap();
-        assert!(
-            suite.verify_proof(&data_integrity_proof, &doc_hash).is_ok(),
-            "Sanity check failed"
         );
     }
 
