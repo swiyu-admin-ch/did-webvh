@@ -15,7 +15,6 @@ use did_sidekicks::jcs_sha256_hasher::JcsSha256Hasher;
 use did_sidekicks::vc_data_integrity::{
     CryptoSuiteType, DataIntegrityProof, EddsaJcs2022Cryptosuite, VCDataIntegrity as _,
 };
-use lazy_static::lazy_static;
 use rayon::prelude::*;
 use regex;
 use regex::Regex;
@@ -38,19 +37,12 @@ pub const DID_LOG_ENTRY_PARAMETERS: &str = "parameters";
 pub const DID_LOG_ENTRY_STATE: &str = "state";
 pub const DID_LOG_ENTRY_PROOF: &str = "proof";
 
-lazy_static! {
-    /// Regex to check if a domain follows the assumption described in https://www.rfc-editor.org/rfc/rfc952.html
-    /// Allowed are lowercase letters (a-z), digits (0-9) dash (-) and period (.). Periods are only allowed to
-    /// delimit components.
-    //#[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
-    static ref DOMAIN_REGEX: Regex = Regex::new(r"^[\-a-z0-9]+(\.[\-a-z0-9]+)*$").unwrap();
-
-    //#[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
-    static ref HAS_PATH_REGEX: Regex = Regex::new(r"([a-z]|[0-9])\/([a-z]|[0-9])").unwrap();
-
-    //#[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
-    static ref HAS_PORT_REGEX: Regex = Regex::new(r"\:[0-9]+").unwrap();
-}
+/// Regex to check if a domain follows the assumption described in https://www.rfc-editor.org/rfc/rfc952.html
+/// Allowed are lowercase letters (a-z), digits (0-9) dash (-) and period (.). Periods are only allowed to
+/// delimit components.
+static DOMAIN_REGEX: &str = r"^[\-a-z0-9]+(\.[\-a-z0-9]+)*$";
+static HAS_PATH_REGEX: &str = r"([a-z]|[0-9])\/([a-z]|[0-9])";
+static HAS_PORT_REGEX: &str = r"\:[0-9]+";
 
 /// Entry in a did log file as shown here
 /// https://identity.foundation/didwebvh/v1.0/#term:did-log-entry
@@ -785,6 +777,8 @@ impl TryFrom<String> for WebVerifiableHistoryId {
         clippy::indexing_slicing,
         reason = "panic-free indexing ensured in code"
     )]
+    #[expect(clippy::unwrap_in_result, reason = "panic-free as long as the regex is valid")]
+    #[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
     fn try_from(did_webvh: String) -> Result<Self, Self::Error> {
         let did_webvh_split: Vec<&str> = did_webvh.splitn(4, ":").collect();
         if did_webvh_split.len() < 4 {
@@ -841,11 +835,13 @@ impl TryFrom<String> for WebVerifiableHistoryId {
             }
         };
 
+        //#[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
+
         // Verify that the host is a valid domain.
         // Special characters were encoded by `Url::parse`.
         // URL without domain, that instead use an ip address are already validated in step 5
         if let url::Origin::Tuple(_, url::Host::Domain(dom), _) = url.origin() {
-            if DOMAIN_REGEX.captures(dom.as_str()).is_none() {
+            if Regex::new(DOMAIN_REGEX).unwrap().captures(dom.as_str()).is_none() {
                 return Err(
                     WebVerifiableHistoryIdResolutionError::InvalidMethodSpecificId(
                         "Domain of provided DID is invalid".to_owned(),
@@ -887,6 +883,8 @@ impl TryFrom<(String, Option<bool>)> for WebVerifiableHistoryId {
         clippy::indexing_slicing,
         reason = "panic-free indexing ensured in code"
     )]
+    #[expect(clippy::unwrap_in_result, reason = "panic-free as long as the regex is valid")]
+    #[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
     fn try_from(value: (String, Option<bool>)) -> Result<Self, Self::Error> {
         let did_webvh = value.0;
         let allow_http = value.1;
@@ -926,8 +924,8 @@ impl TryFrom<(String, Option<bool>)> for WebVerifiableHistoryId {
                         )
                     }
                 };
-                if HAS_PATH_REGEX.captures(url.as_str()).is_some()
-                    || HAS_PORT_REGEX.captures(url.as_str()).is_some()
+                if Regex::new(HAS_PATH_REGEX).unwrap().captures(url.as_str()).is_some()
+                    || Regex::new(HAS_PORT_REGEX).unwrap().captures(url.as_str()).is_some()
                 {
                     Ok(Self {
                         scid: scid.to_owned(),
