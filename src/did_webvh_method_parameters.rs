@@ -19,7 +19,7 @@ pub struct WebVerifiableHistoryDidMethodParameters {
     /// The SCID value for the DID
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    scid: Option<String>,
+    pub scid: Option<String>,
 
     /// A JSON array of multikey formatted public keys associated with the private keys that are authorized to sign the log entries that update the DID.
     /// See the Authorized Keys section of this specification for additional details.
@@ -61,22 +61,9 @@ pub struct WebVerifiableHistoryDidMethodParameters {
 }
 
 impl WebVerifiableHistoryDidMethodParameters {
-    pub fn for_genesis_did_doc(scid: String, update_key: String) -> Self {
-        WebVerifiableHistoryDidMethodParameters {
-            method: Some(String::from(DID_METHOD_PARAMETER_VERSION)),
-            scid: Some(scid),
-            update_keys: Some(vec![update_key]),
-            next_keys: None,
-            witnesses: None,
-            watchers: None,
-            deactivated: None,
-            ttl: None,
-            portable: Some(false),
-        }
-    }
-
+    #[inline]
     pub fn empty() -> Self {
-        WebVerifiableHistoryDidMethodParameters {
+        Self {
             method: None,
             scid: None,
             update_keys: None,
@@ -89,12 +76,28 @@ impl WebVerifiableHistoryDidMethodParameters {
         }
     }
 
+    #[inline]
+    pub fn for_genesis_did_doc(scid: String, update_key: String) -> Self {
+        Self {
+            method: Some(String::from(DID_METHOD_PARAMETER_VERSION)),
+            scid: Some(scid),
+            update_keys: Some(vec![update_key]),
+            next_keys: None,
+            witnesses: None,
+            watchers: None,
+            deactivated: None,
+            ttl: None,
+            portable: Some(false),
+        }
+    }
+
     /// Validation against all the criteria described in https://identity.foundation/didwebvh/v0.3/#didtdw-did-method-parameters
     ///
     /// Furthermore, the relevant Swiss profile checks are also taken into account here:
     /// https://github.com/e-id-admin/open-source-community/blob/main/tech-roadmap/swiss-profile.md#didtdwdidwebvh
+    #[inline]
     pub fn validate_initial(&self) -> Result<(), DidResolverError> {
-        if let Some(method) = &self.method {
+        if let Some(method) = self.method.to_owned() {
             // This item MAY appear in later DID log entries to indicate that the processing rules
             // for that and later entries have been changed to a different specification version.
             if method != DID_METHOD_PARAMETER_VERSION {
@@ -106,42 +109,42 @@ impl WebVerifiableHistoryDidMethodParameters {
             // This item MUST appear in the first DID log entry.
             return Err(DidResolverError::InvalidDidParameter(
                 "Missing 'method' DID parameter. This item MUST appear in the first DID log entry."
-                    .to_string(),
+                    .to_owned(),
             ));
         }
 
-        if let Some(scid) = &self.scid {
+        if let Some(scid) = self.scid.to_owned() {
             if scid.is_empty() {
                 return Err(DidResolverError::InvalidDidParameter(
-                    "Invalid 'scid' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
+                    "Invalid 'scid' DID parameter. This item MUST appear in the first DID log entry.".to_owned(),
                 ));
             }
         } else {
             return Err(DidResolverError::InvalidDidParameter(
                 "Missing 'scid' DID parameter. This item MUST appear in the first DID log entry."
-                    .to_string(),
+                    .to_owned(),
             ));
         }
 
-        if let Some(update_keys) = &self.update_keys {
+        if let Some(update_keys) = self.update_keys.to_owned() {
             if update_keys.is_empty() {
                 return Err(DidResolverError::InvalidDidParameter(
-                    "Empty 'updateKeys' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
+                    "Empty 'updateKeys' DID parameter. This item MUST appear in the first DID log entry.".to_owned(),
                 ));
             }
         } else {
             return Err(DidResolverError::InvalidDidParameter(
-                "Missing 'updateKeys' DID parameter. This item MUST appear in the first DID log entry.".to_string(),
+                "Missing 'updateKeys' DID parameter. This item MUST appear in the first DID log entry.".to_owned(),
             ));
         }
 
         // As specified by https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check:
         // - Must be either null or a non-empty list of strings
         // - Must only contain valid base58 strings and valid multikeys
-        if let Some(next_keys) = &self.next_keys {
+        if let Some(next_keys) = self.next_keys.to_owned() {
             if next_keys.is_empty() {
                 return Err(DidResolverError::InvalidDidParameter(
-                    "The 'nextKeyHashes' DID parameter must be either None (omitted) or a non-empty list of strings.".to_string(),
+                    "The 'nextKeyHashes' DID parameter must be either None (omitted) or a non-empty list of strings.".to_owned(),
                 ));
             }
         }
@@ -151,12 +154,12 @@ impl WebVerifiableHistoryDidMethodParameters {
         // As the DIDs are published on a central base registry the DID controller and the hoster
         // are different actors and the chance that both are compromised is minimized.
         // It would add complexity to the resolving of a DID and the base registry would need to also host did-witness.json file.
-        if let Some(witness) = &self.witnesses {
+        if let Some(witness) = self.witnesses.to_owned() {
             if witness.threshold > 0 || !witness.witnesses.is_empty() {
                 // A witness item in the first DID log entry is used to define the witnesses and necessary threshold for that initial log entry.
                 // In all other DID log entries, a witness item becomes active after the publication of its entry.
                 return Err(DidResolverError::InvalidDidParameter(
-                    "Unsupported non-empty 'witness' DID parameter.".to_string(),
+                    "Unsupported non-empty 'witness' DID parameter.".to_owned(),
                 ));
             }
         }
@@ -174,10 +177,8 @@ impl WebVerifiableHistoryDidMethodParameters {
         Ok(())
     }
 
-    pub fn merge_from(
-        &mut self,
-        other: &WebVerifiableHistoryDidMethodParameters,
-    ) -> Result<(), DidResolverError> {
+    #[inline]
+    pub fn merge_from(&mut self, other: &Self) -> Result<(), DidResolverError> {
         let new_params = other.to_owned();
         let current_params = self.clone();
         self.method = match new_params.method {
@@ -199,7 +200,7 @@ impl WebVerifiableHistoryDidMethodParameters {
                 if current_params.scid.is_none_or(|x| x != scid) {
                     return Err(DidResolverError::InvalidDidParameter(
                         "Invalid 'scid' DID parameter. The 'scid' parameter is not allowed to change."
-                        .to_string(),
+                        .to_owned(),
                     ));
                 };
                 Some(scid)
@@ -215,7 +216,7 @@ impl WebVerifiableHistoryDidMethodParameters {
             Some(witness) => {
                 if witness.threshold > 0 || !witness.witnesses.is_empty() {
                     return Err(DidResolverError::InvalidDidParameter(
-                        "Unsupported non-empty 'witnesses' DID parameter.".to_string(),
+                        "Unsupported non-empty 'witnesses' DID parameter.".to_owned(),
                     ));
                 }
                 Some(Witness {
@@ -230,10 +231,10 @@ impl WebVerifiableHistoryDidMethodParameters {
 
         self.portable = match (current_params.portable, new_params.portable) {
             (Some(true), Some(true)) => return Err(DidResolverError::InvalidDidParameter(
-                "Unsupported 'portable' DID parameter. We currently don't support portable dids".to_string(),
+                "Unsupported 'portable' DID parameter. We currently don't support portable dids".to_owned(),
             )),
             (_, Some(true)) =>  return Err(DidResolverError::InvalidDidParameter(
-                "Invalid 'portable' DID parameter. The value can ONLY be set to true in the first log entry, the initial version of the DID.".to_string(),
+                "Invalid 'portable' DID parameter. The value can ONLY be set to true in the first log entry, the initial version of the DID.".to_owned(),
             )),
             (_, Some(false)) => Some(false),
             (_, None) => current_params.portable
@@ -242,61 +243,66 @@ impl WebVerifiableHistoryDidMethodParameters {
 
         self.deactivated = match (current_params.deactivated, new_params.deactivated) {
             (Some(true), _) => return Err(DidResolverError::InvalidDidDocument(
-                "This DID document is already deactivated. Therefore no additional DID logs are allowed.".to_string()
+                "This DID document is already deactivated. Therefore no additional DID logs are allowed.".to_owned()
             )),
             (_, Some(deactivate)) => Some(deactivate),
             (_, None) => current_params.deactivated,
         };
 
-        self.ttl = new_params.ttl.or(self.ttl.to_owned());
+        self.ttl = new_params.ttl.or(self.ttl);
 
         Ok(())
     }
 
     /// As specified by https://identity.foundation/didwebvh/v0.3/#deactivate-revoke
+    #[inline]
     pub fn deactivate(&mut self) {
         self.update_keys = Some(vec![]);
         self.deactivated = Some(true);
     }
 
+    #[inline]
     pub fn from_json(json_content: &str) -> Result<Self, DidResolverError> {
-        let did_method_parameters: WebVerifiableHistoryDidMethodParameters =
-            match serde_json::from_str(json_content) {
-                Ok(did_method_parameters) => did_method_parameters,
-                Err(err) => {
-                    return Err(DidResolverError::DeserializationFailed(format!(
-                        "Error parsing DID method parameters: {err}"
-                    )));
-                }
-            };
+        let did_method_parameters: Self = match serde_json::from_str(json_content) {
+            Ok(did_method_parameters) => did_method_parameters,
+            Err(err) => {
+                return Err(DidResolverError::DeserializationFailed(format!(
+                    "Error parsing DID method parameters: {err}"
+                )));
+            }
+        };
         Ok(did_method_parameters)
     }
 
+    /// Yet another UniFFI-compliant getter.
+    #[inline]
+    pub fn get_scid(&self) -> String {
+        if let Some(val) = self.scid.to_owned() {
+            return val;
+        }
+        "".to_owned()
+    }
+
+    #[inline]
     pub fn get_scid_option(&self) -> Option<String> {
         self.scid.clone()
     }
 
     /// Yet another UniFFI-compliant getter.
-    pub fn get_scid(&self) -> String {
-        if let Some(v) = &self.scid {
-            return v.clone();
-        }
-        "".to_string()
-    }
-
-    /// Yet another UniFFI-compliant getter.
+    #[inline]
     pub fn get_update_keys(&self) -> Vec<String> {
-        if let Some(v) = &self.update_keys {
-            return v.clone();
+        if let Some(val) = self.update_keys.to_owned() {
+            return val;
         }
         vec![]
     }
 
     /// Yet another UniFFI-compliant getter.
-    pub fn is_deactivated(&self) -> bool {
-        if let Some(v) = self.deactivated {
-            if v {
-                return v;
+    #[inline]
+    pub const fn is_deactivated(&self) -> bool {
+        if let Some(val) = self.deactivated {
+            if val {
+                return val;
             }
         }
         false
@@ -309,29 +315,22 @@ impl TryInto<HashMap<String, Arc<DidMethodParameter>>> for WebVerifiableHistoryD
     /// Conversion of [`WebVerifiableHistoryDidMethodParameters`] into map of [`DidMethodParameter`] objects.
     ///
     /// A UniFFI-compliant method.
+    #[inline]
+    #[expect(clippy::unwrap_in_result, reason = "..")]
+    #[expect(clippy::unwrap_used, reason = "..")]
     fn try_into(self) -> Result<HashMap<String, Arc<DidMethodParameter>>, Self::Error> {
-        let params = self.clone();
-
         // MUST appear in the first DID log entry
-        let method = match DidMethodParameter::new_string_from_option("method", params.method) {
-            Ok(v) => v,
-            Err(err) => return Err(DidResolverError::InvalidDidParameter(format!("{err}"))),
-        };
+        let method = DidMethodParameter::new_string_from_option("method", self.method)
+            .map_err(|err| DidResolverError::InvalidDidParameter(format!("{err}")))?;
 
         // MUST appear in the first log entry. MUST NOT appear in later log entries
-        let scid = match DidMethodParameter::new_string_from_option("scid", params.scid) {
-            Ok(v) => v,
-            Err(err) => return Err(DidResolverError::InvalidDidParameter(format!("{err}"))),
-        };
+        let scid = DidMethodParameter::new_string_from_option("scid", self.scid)
+            .map_err(|err| DidResolverError::InvalidDidParameter(format!("{err}")))?;
 
         // This property MUST appear in the first log entry and MAY appear in subsequent entries
-        let update_keys = match DidMethodParameter::new_string_array_from_option(
-            "update_keys",
-            params.update_keys,
-        ) {
-            Ok(v) => v,
-            Err(err) => return Err(DidResolverError::InvalidDidParameter(format!("{err}"))),
-        };
+        let update_keys =
+            DidMethodParameter::new_string_array_from_option("update_keys", self.update_keys)
+                .map_err(|err| DidResolverError::InvalidDidParameter(format!("{err}")))?;
 
         Ok(HashMap::from([
             (method.get_name(), Arc::new(method)),
@@ -339,25 +338,25 @@ impl TryInto<HashMap<String, Arc<DidMethodParameter>>> for WebVerifiableHistoryD
             (update_keys.get_name(), Arc::new(update_keys)),
             // Defaults to false if omitted in the first entry
             (
-                "portable".to_string(),
+                "portable".to_owned(),
                 Arc::new(DidMethodParameter::new_bool_from_option(
                     "portable",
-                    params.deactivated,
+                    self.deactivated,
                 )),
             ),
             // Defaults to false if not set in the first DID log entry
             (
-                "deactivated".to_string(),
+                "deactivated".to_owned(),
                 Arc::new(DidMethodParameter::new_bool_from_option(
                     "deactivated",
-                    params.deactivated,
+                    self.deactivated,
                 )),
             ),
             // Defaults to 3600 (1 hour) if not set in the first DID log entry
             (
-                "ttl".to_string(),
+                "ttl".to_owned(),
                 Arc::new(
-                    DidMethodParameter::new_number_from_option("ttl", params.ttl).unwrap_or_else(
+                    DidMethodParameter::new_number_from_option("ttl", self.ttl).unwrap_or_else(
                         |_| DidMethodParameter::new_number_from_option("ttl", Some(3600)).unwrap(),
                     ),
                 ),
@@ -367,6 +366,7 @@ impl TryInto<HashMap<String, Arc<DidMethodParameter>>> for WebVerifiableHistoryD
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[non_exhaustive]
 pub struct Witness {
     #[serde(skip_serializing_if = "is_zero")]
     #[serde(default)]
@@ -378,8 +378,7 @@ pub struct Witness {
 }
 
 /// This is only used for serialize
-#[allow(clippy::trivially_copy_pass_by_ref)]
-fn is_zero(num: &u32) -> bool {
+const fn is_zero(num: &u32) -> bool {
     *num == 0
 }
 
@@ -387,6 +386,10 @@ fn is_zero(num: &u32) -> bool {
 const DID_METHOD_PARAMETER_VERSION: &str = "did:webvh:1.0";
 
 #[cfg(test)]
+#[expect(
+    clippy::unwrap_used,
+    reason = "unwrap calls are panic-safe as long as test case setup is correct"
+)]
 mod test {
     use crate::did_webvh_method_parameters::{
         WebVerifiableHistoryDidMethodParameters, Witness, DID_METHOD_PARAMETER_VERSION,
@@ -402,15 +405,15 @@ mod test {
     fn test_did_webvh_parameters_validate_initial() {
         let params_for_genesis_did_doc =
             WebVerifiableHistoryDidMethodParameters::for_genesis_did_doc(
-                "scid".to_string(),
-                "update_key".to_string(),
+                "scid".to_owned(),
+                "update_key".to_owned(),
             );
-        assert!(params_for_genesis_did_doc.validate_initial().is_ok());
+        params_for_genesis_did_doc.validate_initial().unwrap(); // should not panic
 
         let mut params = params_for_genesis_did_doc.clone();
 
         // Test "method" DID parameter
-        params.method = Some("invalidVersion".to_string());
+        params.method = Some("invalidVersion".to_owned());
         assert_trust_did_web_error(
             params.validate_initial(),
             DidResolverErrorKind::InvalidDidParameter,
@@ -425,7 +428,7 @@ mod test {
 
         // Test "scid" DID parameter
         params = params_for_genesis_did_doc.clone();
-        params.scid = Some("".to_string());
+        params.scid = Some("".to_owned());
         assert_trust_did_web_error(
             params.validate_initial(),
             DidResolverErrorKind::InvalidDidParameter,
@@ -463,9 +466,9 @@ mod test {
         );
         */
         params.portable = Some(false);
-        assert!(params.validate_initial().is_ok());
+        params.validate_initial().unwrap(); // should not panic
         params.portable = None;
-        assert!(params.validate_initial().is_ok());
+        params.validate_initial().unwrap(); // should not panic
 
         // Test "next_keys" DID parameter
         params = params_for_genesis_did_doc.clone();
@@ -475,16 +478,16 @@ mod test {
             DidResolverErrorKind::InvalidDidParameter,
             "The 'nextKeyHashes' DID parameter must be either None (omitted) or a non-empty list of strings",
         );
-        params.next_keys = Some(vec!["some_valid_key".to_string()]);
-        assert!(params.validate_initial().is_ok());
+        params.next_keys = Some(vec!["some_valid_key".to_owned()]);
+        params.validate_initial().unwrap(); // should not panic
         params.next_keys = None;
-        assert!(params.validate_initial().is_ok());
+        params.validate_initial().unwrap(); // should not panic
 
         // Test "witnesses" DID parameter
-        params = params_for_genesis_did_doc.clone();
+        params = params_for_genesis_did_doc;
         params.witnesses = Some(Witness {
             threshold: 1,
-            witnesses: vec!["some_valid_witness".to_string()],
+            witnesses: vec!["some_valid_witness".to_owned()],
         });
         assert_trust_did_web_error(
             params.validate_initial(),
@@ -495,74 +498,74 @@ mod test {
             threshold: 0,
             witnesses: vec![],
         });
-        assert!(params.validate_initial().is_ok());
+        params.validate_initial().unwrap(); // should not panic
         params.witnesses = None;
-        assert!(params.validate_initial().is_ok());
+        params.validate_initial().unwrap(); // should not panic
     }
 
     #[rstest]
     fn test_did_webvh_parameters_validate_transition() {
         let base_params = WebVerifiableHistoryDidMethodParameters::for_genesis_did_doc(
-            "scid".to_string(),
-            "update_key".to_string(),
+            "scid".to_owned(),
+            "update_key".to_owned(),
         );
 
         let mut old_params = base_params.clone();
         let mut new_params = base_params.clone();
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
 
         // Test "method" DID parameter
         old_params = base_params.clone();
         new_params = base_params.clone();
-        new_params.method = Some("invalidVersion".to_string());
+        new_params.method = Some("invalidVersion".to_owned());
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
             DidResolverErrorKind::InvalidDidParameter,
             "Invalid 'method' DID parameter.",
         );
         new_params.method = None;
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
 
         // Test "scid" DID parameter
         old_params = old_params.clone();
         new_params = new_params.clone();
-        new_params.scid = Some("otherSCID".to_string());
+        new_params.scid = Some("otherSCID".to_owned());
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
             DidResolverErrorKind::InvalidDidParameter,
             "Invalid 'scid' DID parameter.",
         );
         new_params.scid = None;
-        assert!(old_params.merge_from(&new_params).is_ok());
-        new_params.scid = Some("scid".to_string()); // SAME scid value
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
+        new_params.scid = Some("scid".to_owned()); // SAME scid value
+        old_params.merge_from(&new_params).unwrap(); // should not panic
 
         // Test "update_keys" DID parameter
         old_params = base_params.clone();
         new_params = base_params.clone();
-        new_params.update_keys = Some(vec!["newUpdateKey".to_string()]);
-        assert!(old_params.merge_from(&new_params).is_ok());
+        new_params.update_keys = Some(vec!["newUpdateKey".to_owned()]);
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.update_keys = None;
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.update_keys = Some(vec![]);
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
 
         // Test "next_keys" DID parameter
         old_params = base_params.clone();
         new_params = base_params.clone();
-        new_params.next_keys = Some(vec!["newUpdateKeyHash".to_string()]);
-        assert!(old_params.merge_from(&new_params).is_ok());
+        new_params.next_keys = Some(vec!["newUpdateKeyHash".to_owned()]);
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.next_keys = None;
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.next_keys = Some(vec![]);
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
 
         // Test "witness" DID parameter
         old_params = base_params.clone();
         new_params = base_params.clone();
         new_params.witnesses = Some(Witness {
             threshold: 1,
-            witnesses: vec!["some_valid_witness".to_string()],
+            witnesses: vec!["some_valid_witness".to_owned()],
         });
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
@@ -573,23 +576,23 @@ mod test {
             threshold: 0,
             witnesses: vec![],
         });
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.witnesses = None;
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
 
         // Test watchers
         old_params = base_params.clone();
         new_params = base_params.clone();
-        new_params.watchers = Some(vec!["https://example.domain".to_string()]);
-        assert!(old_params.merge_from(&new_params).is_ok());
+        new_params.watchers = Some(vec!["https://example.domain".to_owned()]);
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.watchers = None;
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.watchers = Some(vec![]);
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
 
         // Test "portable" DID parameter
         old_params = base_params.clone();
-        new_params = base_params.clone();
+        new_params = base_params;
 
         new_params.portable = Some(true);
         assert_trust_did_web_error(
@@ -598,9 +601,9 @@ mod test {
             "Invalid 'portable' DID parameter.",
         );
         new_params.portable = Some(false);
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.portable = None;
-        assert!(old_params.merge_from(&new_params).is_ok());
+        old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.portable = Some(true);
         old_params.portable = Some(true);
         assert_trust_did_web_error(
@@ -613,8 +616,8 @@ mod test {
     #[rstest]
     fn test_did_webvh_method_parameters_try_into() {
         let mut base_params = WebVerifiableHistoryDidMethodParameters::for_genesis_did_doc(
-            "scid".to_string(),
-            "some_update_key".to_string(),
+            "scid".to_owned(),
+            "some_update_key".to_owned(),
         );
         base_params.portable = Some(true);
         base_params.deactivated = Some(true);

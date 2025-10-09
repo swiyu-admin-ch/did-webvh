@@ -9,6 +9,7 @@ use rayon::prelude::*;
 use std::fs;
 use std::path::Path;
 
+#[expect(clippy::unwrap_used, reason = "..")]
 pub fn criterion_benchmark_setup(_: &mut Criterion) {
     // On MacOS, this should match the result of running `sysctl -a machdep.cpu` command
     let available_parallelism = std::thread::available_parallelism().unwrap().get();
@@ -29,6 +30,7 @@ pub fn criterion_benchmark_setup(_: &mut Criterion) {
     //println!("Global thread pool (rayon) initialized");
 }
 
+#[expect(clippy::panic, reason = "..")]
 pub fn criterion_benchmark_did_webvh(c: &mut Criterion) {
     let inputs = [5, 10, 50, 100, 200, 300, 400];
 
@@ -47,14 +49,14 @@ pub fn criterion_benchmark_did_webvh(c: &mut Criterion) {
     for i in inputs {
         group.bench_function(BenchmarkId::new("WebVerifiableHistory_read", i), |b| {
             b.iter(|| {
-                let did_log_raw_filepath = format!{"test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i};
+                let did_log_raw_filepath = format!("test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i);
                 let did_url =
                     "did:webvh:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085";
 
                 let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
 
                 if let Some(err) = WebVerifiableHistory::resolve(black_box(did_url.to_string()), black_box(did_log_raw)).err() {
-                    panic!("{}", err.to_string());
+                    panic!("{err}");
                 }
             })
         });
@@ -62,6 +64,7 @@ pub fn criterion_benchmark_did_webvh(c: &mut Criterion) {
     group.finish();
 }
 
+#[expect(clippy::panic, reason = "..")]
 pub fn criterion_benchmark_did_webvh_jsonschema(c: &mut Criterion) {
     let inputs = [5, 10, 50, 100, 200, 300, 400];
 
@@ -88,7 +91,7 @@ pub fn criterion_benchmark_did_webvh_jsonschema(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let did_log_raw_filepath =
-                        format! {"test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i};
+                        format!("test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i);
 
                     let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
 
@@ -97,7 +100,7 @@ pub fn criterion_benchmark_did_webvh_jsonschema(c: &mut Criterion) {
                         //.find_map(|line| validator.validate(black_box(String::from(line))).err()) {
                         .find_map(|line| validator.validate_str(black_box(line)).err())
                     {
-                        panic!("{}", err.to_string());
+                        panic!("{err}");
                     }
                 })
             },
@@ -117,7 +120,7 @@ pub fn criterion_benchmark_did_webvh_jsonschema(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let did_log_raw_filepath =
-                        format! {"test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i};
+                        format!("test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i);
 
                     let did_log_raw = fs::read_to_string(Path::new(&did_log_raw_filepath)).unwrap();
 
@@ -128,7 +131,7 @@ pub fn criterion_benchmark_did_webvh_jsonschema(c: &mut Criterion) {
                         //.find_map_any(|line| validator.validate(black_box(String::from(line))).err()) {
                         .find_map_any(|line| validator.validate_str(black_box(line)).err())
                     {
-                        panic!("{}", err.to_string());
+                        panic!("{err}");
                     }
                 })
             },
