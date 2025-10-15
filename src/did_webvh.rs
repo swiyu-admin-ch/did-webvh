@@ -191,77 +191,74 @@ impl DidLogEntry {
     #[inline]
     //#[expect(clippy::unwrap_in_result, reason = "..")]
     pub fn verify_data_integrity_proof(&self) -> Result<(), DidResolverError> {
-        match self.proof.to_owned() {
-            Some(proof_vec) => {
-                if proof_vec.is_empty() {
-                    return Err(DidResolverError::InvalidDataIntegrityProof(
-                        "Invalid did log. Proof is empty.".to_owned(),
-                    ));
-                }
-
-                let mut prev = self.prev_entry.as_ref().map_or(self, |err| err);
-                // In all entries with active Key Pre-Rotation, the update keys of the current log
-                // entry are used.
-                if prev.parameters.is_key_pre_rotation_active() {
-                    prev = self;
-                }
-
-                for proof in proof_vec {
-                    let update_key = match proof.extract_update_key() {
-                        Ok(key) => key,
-                        Err(err) => {
-                            return Err(DidResolverError::InvalidDataIntegrityProof(format!(
-                                "Failed to extract update key due to: {err}"
-                            )))
-                        }
-                    };
-
-                    let verifying_key = prev.is_key_authorized_for_update(update_key)?;
-
-                    if !matches!(proof.crypto_suite_type, Some(CryptoSuiteType::EddsaJcs2022)) {
-                        return Err(DidResolverError::InvalidDataIntegrityProof(format!(
-                            "Unsupported proof's cryptosuite {}",
-                            proof.crypto_suite
-                        )));
-                    }
-
-                    let cryptosuite = EddsaJcs2022Cryptosuite {
-                        verifying_key: Some(verifying_key),
-                        signing_key: None,
-                    };
-
-                    // use entire DidLogEntry for signature
-                    let doc = Self {
-                        version: self.version.clone(),
-                        version_time: self.version_time,
-                        parameters: self.parameters.clone(),
-                        did_doc: self.did_doc.clone(),
-                        did_doc_json: self.did_doc_json.clone(),
-                        proof: None,
-                        prev_entry: None,
-                    }
-                    .to_log_entry_line()?;
-
-                    let doc_hash = JcsSha256Hasher::default()
-                        .encode_hex(&doc)
-                        .map_err(|err| DidResolverError::SerializationFailed(format!("{err}")))?;
-
-                    match cryptosuite.verify_proof(&proof, doc_hash.as_str()) {
-                        Ok(_) => (),
-                        Err(err) => {
-                            return Err(DidResolverError::InvalidDataIntegrityProof(format!(
-                                "Failed to verify proof due to: {err}"
-                            )))
-                        }
-                    };
-                }
-            }
-            None => {
-                return Err(DidResolverError::InvalidDataIntegrityProof(
-                    "Invalid did log. Proof is empty.".to_owned(),
-                ))
-            }
+        let Some(proof_vec) = self.proof.to_owned() else {
+            return Err(DidResolverError::InvalidDataIntegrityProof(
+                "Invalid did log. Proof is empty.".to_owned(),
+            ));
         };
+
+        if proof_vec.is_empty() {
+            return Err(DidResolverError::InvalidDataIntegrityProof(
+                "Invalid did log. Proof is empty.".to_owned(),
+            ));
+        }
+
+        let mut prev = self.prev_entry.as_ref().map_or(self, |err| err);
+        // In all entries with active Key Pre-Rotation, the update keys of the current log
+        // entry are used.
+        if prev.parameters.is_key_pre_rotation_active() {
+            prev = self;
+        }
+
+        for proof in proof_vec {
+            let update_key = match proof.extract_update_key() {
+                Ok(key) => key,
+                Err(err) => {
+                    return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                        "Failed to extract update key due to: {err}"
+                    )))
+                }
+            };
+
+            let verifying_key = prev.is_key_authorized_for_update(update_key)?;
+
+            if !matches!(proof.crypto_suite_type, Some(CryptoSuiteType::EddsaJcs2022)) {
+                return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                    "Unsupported proof's cryptosuite {}",
+                    proof.crypto_suite
+                )));
+            }
+
+            let cryptosuite = EddsaJcs2022Cryptosuite {
+                verifying_key: Some(verifying_key),
+                signing_key: None,
+            };
+
+            // use entire DidLogEntry for signature
+            let doc = Self {
+                version: self.version.clone(),
+                version_time: self.version_time,
+                parameters: self.parameters.clone(),
+                did_doc: self.did_doc.clone(),
+                did_doc_json: self.did_doc_json.clone(),
+                proof: None,
+                prev_entry: None,
+            }
+            .to_log_entry_line()?;
+
+            let doc_hash = JcsSha256Hasher::default()
+                .encode_hex(&doc)
+                .map_err(|err| DidResolverError::SerializationFailed(format!("{err}")))?;
+
+            match cryptosuite.verify_proof(&proof, doc_hash.as_str()) {
+                Ok(_) => (),
+                Err(err) => {
+                    return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                        "Failed to verify proof due to: {err}"
+                    )))
+                }
+            };
+        }
 
         Ok(())
     }
@@ -316,14 +313,14 @@ impl DidLogEntry {
                     ));
                 }
 
-                match update_keys.iter().find(|entry| *entry == &update_key) {
-                    Some(_) => {}
-                    _ => {
-                        return Err(DidResolverError::InvalidDataIntegrityProof(format!(
-                            "Key extracted from proof is not authorized for update: {update_key}"
-                        )))
-                    }
-                };
+                if !update_keys
+                    .iter()
+                    .any(|entry| *entry == update_key.as_str())
+                {
+                    return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                        "Key extracted from proof is not authorized for update: {update_key}"
+                    )));
+                }
 
                 let verifying_key = match Ed25519VerifyingKey::from_multibase(update_key.as_str()) {
                     Ok(key) => key,
@@ -367,13 +364,10 @@ impl DidLogEntry {
         });
 
         if let Some(proof) = self.proof.to_owned() {
-            let first_proof = match proof.first() {
-                Some(prf) => prf,
-                None => {
-                    return Err(DidResolverError::InvalidDataIntegrityProof(
-                        "Invalid did log. Proof is empty.".to_owned(),
-                    ))
-                }
+            let Some(first_proof) = proof.first() else {
+                return Err(DidResolverError::InvalidDataIntegrityProof(
+                    "Invalid did log. Proof is empty.".to_owned(),
+                ));
             };
 
             let first_proof_json_val = match first_proof.json_value() {
@@ -522,10 +516,9 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                                     new_params = Some(WebVerifiableHistoryDidMethodParameters::empty());
                                     Some(current_par)
                                 }
-                                (Some(current_par), Some(new_par)) => {
-                                    let mut current_params = current_par;
-                                    current_params.merge_from(&new_par)?;
-                                    Some(current_params)
+                                (Some(mut current_par), Some(new_par)) => {
+                                    current_par.merge_from(&new_par)?;
+                                    Some(current_par)
                                 }
                             }
                         }

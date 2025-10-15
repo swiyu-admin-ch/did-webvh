@@ -138,10 +138,8 @@ impl WebVerifiableHistoryDidMethodParameters {
             ));
         }
 
-        // TODO@MP update confluence page
-        // As specified by DID Log Conformity Check https://confluence.bit.admin.ch/x/r_0EMw:
-        // - 1 Must be null or a non empty list of strings
-        // - If not set in the first log entry, its value defaults to an empty array ([]).
+        // As specified by https://identity.foundation/didwebvh/v1.0/#didwebvh-did-method-parameters:
+        // If not set in the first log entry, its value defaults to an empty array ([])
         if self.next_keys.is_none() {
             self.next_keys = Some(Vec::new());
         }
@@ -351,6 +349,7 @@ impl WebVerifiableHistoryDidMethodParameters {
         false
     }
 
+    #[inline]
     pub fn is_key_pre_rotation_active(&self) -> bool {
         self.next_keys.as_ref().is_some_and(|keys| !keys.is_empty())
     }
