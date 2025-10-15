@@ -199,7 +199,13 @@ impl DidLogEntry {
                     ));
                 }
 
-                let prev = self.prev_entry.as_ref().map_or(self, |err| err);
+                let mut prev = self.prev_entry.as_ref().map_or(self, |err| err);
+                // In all entries with active Key Pre-Rotation, the update keys of the current log
+                // entry are used.
+                if prev.parameters.is_key_pre_rotation_active() {
+                    prev = self;
+                }
+
                 for proof in proof_vec {
                     let update_key = match proof.extract_update_key() {
                         Ok(key) => key,
@@ -264,7 +270,7 @@ impl DidLogEntry {
     #[inline]
     pub fn calculate_entry_hash(&self) -> Result<String, DidResolverError> {
         // According to https://identity.foundation/didwebvh/v1.0/#entry-hash-generation-and-verification
-        // 2 Determine hash algorithm, as specified by TODO, is base58btc
+        // 2 Determine hash algorithm from the multihash (https://identity.foundation/didwebvh/v1.0/#term:multihash), value is encoded as base58btc
         // 3 Set the versionId in the entry object to be the versionId from the previous log entry.
         //   If this is the first entry in the log, set the value to <scid>, the value of the SCID of the DID.
         let prev_version_id = match self.prev_entry.to_owned() {
@@ -331,13 +337,10 @@ impl DidLogEntry {
                 Ok(verifying_key)
             }
             None => {
-                let prev_entry = match self.prev_entry.to_owned() {
-                    Some(entr) => entr,
-                    _ => {
-                        return Err(DidResolverError::InvalidDataIntegrityProof(
-                            "No update keys detected".to_owned(),
-                        ));
-                    }
+                let Some(prev_entry) = self.prev_entry.to_owned() else {
+                    return Err(DidResolverError::InvalidDataIntegrityProof(
+                        "No update keys detected".to_owned(),
+                    ));
                 };
                 prev_entry.is_key_authorized_for_update(update_key) // recursive call
             }
@@ -509,7 +512,7 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                                 (None, None) => return Err(DidResolverError::DeserializationFailed(
                                     "Missing DID Document parameters.".to_owned(),
                                 )),
-                                (None, Some(new_par)) => {
+                                (None, Some(mut new_par)) => {
                                     // this is the first entry, therefore we check for the base configuration
                                     new_par.validate_initial()?;
 
@@ -520,9 +523,9 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                                     Some(current_par)
                                 }
                                 (Some(current_par), Some(new_par)) => {
-                                    let mut _current_params = current_par;
-                                    _current_params.merge_from(&new_par)?;
-                                    Some(_current_params)
+                                    let mut current_params = current_par;
+                                    current_params.merge_from(&new_par)?;
+                                    Some(current_params)
                                 }
                             }
                         }
@@ -777,8 +780,14 @@ impl TryFrom<String> for WebVerifiableHistoryId {
         clippy::indexing_slicing,
         reason = "panic-free indexing ensured in code"
     )]
-    #[expect(clippy::unwrap_in_result, reason = "panic-free as long as the regex is valid")]
-    #[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
+    #[expect(
+        clippy::unwrap_in_result,
+        reason = "panic-free as long as the regex is valid"
+    )]
+    #[expect(
+        clippy::unwrap_used,
+        reason = "panic-free as long as the regex is valid"
+    )]
     fn try_from(did_webvh: String) -> Result<Self, Self::Error> {
         let did_webvh_split: Vec<&str> = did_webvh.splitn(4, ":").collect();
         if did_webvh_split.len() < 4 {
@@ -841,7 +850,11 @@ impl TryFrom<String> for WebVerifiableHistoryId {
         // Special characters were encoded by `Url::parse`.
         // URL without domain, that instead use an ip address are already validated in step 5
         if let url::Origin::Tuple(_, url::Host::Domain(dom), _) = url.origin() {
-            if Regex::new(DOMAIN_REGEX).unwrap().captures(dom.as_str()).is_none() {
+            if Regex::new(DOMAIN_REGEX)
+                .unwrap()
+                .captures(dom.as_str())
+                .is_none()
+            {
                 return Err(
                     WebVerifiableHistoryIdResolutionError::InvalidMethodSpecificId(
                         "Domain of provided DID is invalid".to_owned(),
@@ -883,8 +896,14 @@ impl TryFrom<(String, Option<bool>)> for WebVerifiableHistoryId {
         clippy::indexing_slicing,
         reason = "panic-free indexing ensured in code"
     )]
-    #[expect(clippy::unwrap_in_result, reason = "panic-free as long as the regex is valid")]
-    #[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
+    #[expect(
+        clippy::unwrap_in_result,
+        reason = "panic-free as long as the regex is valid"
+    )]
+    #[expect(
+        clippy::unwrap_used,
+        reason = "panic-free as long as the regex is valid"
+    )]
     fn try_from(value: (String, Option<bool>)) -> Result<Self, Self::Error> {
         let did_webvh = value.0;
         let allow_http = value.1;
@@ -924,8 +943,14 @@ impl TryFrom<(String, Option<bool>)> for WebVerifiableHistoryId {
                         )
                     }
                 };
-                if Regex::new(HAS_PATH_REGEX).unwrap().captures(url.as_str()).is_some()
-                    || Regex::new(HAS_PORT_REGEX).unwrap().captures(url.as_str()).is_some()
+                if Regex::new(HAS_PATH_REGEX)
+                    .unwrap()
+                    .captures(url.as_str())
+                    .is_some()
+                    || Regex::new(HAS_PORT_REGEX)
+                        .unwrap()
+                        .captures(url.as_str())
+                        .is_some()
                 {
                     Ok(Self {
                         scid: scid.to_owned(),
@@ -1182,6 +1207,12 @@ mod test {
         "did:tdw:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
         DidResolverErrorKind::DeserializationFailed,
         "must be before the current datetime"
+    )]
+    #[case(
+        "test_data/manually_created/unhappy_path/signed_with_outdated_key.jsonl",
+        "did:webvh:QmYDETZ8E1Sj3FiXubkw2D3XRa7Fxz26ykE8JFDZFUHzNU:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
+        DidResolverErrorKind::InvalidIntegrityProof,
+        "Key extracted from proof is not authorized for update"
     )]
     /* TODO generate a proper (did:webvh) test case data using didtoolbox-java
     #[case(

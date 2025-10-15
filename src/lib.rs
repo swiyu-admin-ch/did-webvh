@@ -46,7 +46,7 @@ uniffi::include_scaffolding!("did_webvh");
 )]
 mod test {
     use super::did_webvh::*;
-    use crate::errors::*;
+    use crate::{did_webvh, errors::*};
     use core::panic;
     use did_sidekicks::did_doc::*;
     use did_sidekicks::errors::{DidResolverError, DidResolverErrorKind};
@@ -54,8 +54,8 @@ mod test {
     use rand::Rng as _;
     use rstest::{fixture, rstest};
     use serde_json::Value as JsonValue;
-    use std::path::Path;
     use std::fs;
+    use std::path::Path;
 
     #[fixture]
     fn unique_base_url() -> String {
@@ -258,6 +258,10 @@ mod test {
     #[case(
         "test_data/manually_created/2_log_entries.jsonl",
         "did:webvh:QmYPmKXuvwHeVF8zWdcMvU3UNksUZnR5kUJbhDjEjbZYvX:example.com"
+    )]
+    #[case(
+        "test_data/manually_created/key_rotation.jsonl",
+        "did:webvh:QmYDETZ8E1Sj3FiXubkw2D3XRa7Fxz26ykE8JFDZFUHzNU:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
     )]
     #[case(
         "test_data/generated_by_didtoolbox_java/single_update_key.jsonl",

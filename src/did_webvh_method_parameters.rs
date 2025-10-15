@@ -91,12 +91,12 @@ impl WebVerifiableHistoryDidMethodParameters {
         }
     }
 
-    /// Validation against all the criteria described in https://identity.foundation/didwebvh/v0.3/#didtdw-did-method-parameters
+    /// Validation against all the criteria and sets default values described in https://identity.foundation/didwebvh/v1.0/#didwebvh-did-method-parameters
     ///
     /// Furthermore, the relevant Swiss profile checks are also taken into account here:
     /// https://github.com/e-id-admin/open-source-community/blob/main/tech-roadmap/swiss-profile.md#didtdwdidwebvh
     #[inline]
-    pub fn validate_initial(&self) -> Result<(), DidResolverError> {
+    pub fn validate_initial(&mut self) -> Result<(), DidResolverError> {
         if let Some(method) = self.method.to_owned() {
             // This item MAY appear in later DID log entries to indicate that the processing rules
             // for that and later entries have been changed to a different specification version.
@@ -138,15 +138,12 @@ impl WebVerifiableHistoryDidMethodParameters {
             ));
         }
 
-        // As specified by https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check:
-        // - Must be either null or a non-empty list of strings
-        // - Must only contain valid base58 strings and valid multikeys
-        if let Some(next_keys) = self.next_keys.to_owned() {
-            if next_keys.is_empty() {
-                return Err(DidResolverError::InvalidDidParameter(
-                    "The 'nextKeyHashes' DID parameter must be either None (omitted) or a non-empty list of strings.".to_owned(),
-                ));
-            }
+        // TODO@MP update confluence page
+        // As specified by DID Log Conformity Check https://confluence.bit.admin.ch/x/r_0EMw:
+        // - 1 Must be null or a non empty list of strings
+        // - If not set in the first log entry, its value defaults to an empty array ([]).
+        if self.next_keys.is_none() {
+            self.next_keys = Some(Vec::new());
         }
 
         // https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check:
@@ -192,12 +189,16 @@ impl WebVerifiableHistoryDidMethodParameters {
                 }
                 Some(method)
             }
-            None => current_params.method,
+            None => current_params.method.clone(),
         };
 
         self.scid = match new_params.scid {
             Some(scid) => {
-                if current_params.scid.is_none_or(|x| x != scid) {
+                if current_params
+                    .scid
+                    .as_ref()
+                    .is_none_or(|x| x != scid.as_str())
+                {
                     return Err(DidResolverError::InvalidDidParameter(
                         "Invalid 'scid' DID parameter. The 'scid' parameter is not allowed to change."
                         .to_owned(),
@@ -207,6 +208,48 @@ impl WebVerifiableHistoryDidMethodParameters {
             }
             None => self.scid.clone(),
         };
+
+        // During key pre-rotation, new log entries
+        // - must have 1 key in updateKeys
+        // - all updateKey must be in nextKeyHashes
+        #[expect(clippy::else_if_without_else, reason = "no else required at the end")]
+        if current_params.is_key_pre_rotation_active() {
+            if new_params
+                .update_keys
+                .as_ref()
+                .is_none_or(|keys| keys.is_empty())
+            {
+                return Err(DidResolverError::InvalidDidParameter(
+                    "updatesKeys must not be empty during key pre-rotation.".to_owned(),
+                ));
+            }
+
+            // If Key Pre-Rotation is active, the hash of all updateKeys entries in the parameters property
+            // MUST match a hash in the array of nextKeyHashes parameter from the previous DID log entry,
+            // with exception of the first entry, as defined in the Pre-Rotation[Key Pre-Rotation Hash Generation and
+            // Verification](#pre-rotation-key-hash-generation-and-verification) section of this specification.
+            for update_key in new_params.update_keys.iter().flatten() {
+                if !current_params
+                    .next_keys
+                    .iter()
+                    .flatten()
+                    .any(|key| *key == update_key.as_str())
+                {
+                    return Err(DidResolverError::InvalidDidParameter(
+                        "Invalid update key found. All update keys must match an entry in nextKeyhashes parameters of the previous log (except for the first log entry).".to_owned()
+                    ));
+                }
+            }
+        } else if new_params
+            .update_keys
+            .as_ref()
+            .is_some_and(|update_keys| !update_keys.is_empty())
+        {
+            return Err(DidResolverError::InvalidDidParameter(
+                "Invalid update key found. UpdateKey may only be set during key pre-rotation."
+                    .to_owned(),
+            ));
+        }
 
         self.update_keys = new_params.update_keys.or(current_params.update_keys);
 
@@ -307,6 +350,10 @@ impl WebVerifiableHistoryDidMethodParameters {
         }
         false
     }
+
+    pub fn is_key_pre_rotation_active(&self) -> bool {
+        self.next_keys.as_ref().is_some_and(|keys| !keys.is_empty())
+    }
 }
 
 impl TryInto<HashMap<String, Arc<DidMethodParameter>>> for WebVerifiableHistoryDidMethodParameters {
@@ -403,7 +450,7 @@ mod test {
 
     #[rstest]
     fn test_did_webvh_parameters_validate_initial() {
-        let params_for_genesis_did_doc =
+        let mut params_for_genesis_did_doc =
             WebVerifiableHistoryDidMethodParameters::for_genesis_did_doc(
                 "scid".to_owned(),
                 "update_key".to_owned(),
@@ -473,11 +520,7 @@ mod test {
         // Test "next_keys" DID parameter
         params = params_for_genesis_did_doc.clone();
         params.next_keys = Some(vec![]);
-        assert_trust_did_web_error(
-            params.validate_initial(),
-            DidResolverErrorKind::InvalidDidParameter,
-            "The 'nextKeyHashes' DID parameter must be either None (omitted) or a non-empty list of strings",
-        );
+        params.validate_initial().unwrap(); // should not panic
         params.next_keys = Some(vec!["some_valid_key".to_owned()]);
         params.validate_initial().unwrap(); // should not panic
         params.next_keys = None;
@@ -510,13 +553,16 @@ mod test {
             "update_key".to_owned(),
         );
 
+        let mut new_base_params = base_params.clone();
+        new_base_params.update_keys = None;
+
         let mut old_params = base_params.clone();
-        let mut new_params = base_params.clone();
+        let mut new_params = new_base_params.clone();
         old_params.merge_from(&new_params).unwrap(); // should not panic
 
         // Test "method" DID parameter
         old_params = base_params.clone();
-        new_params = base_params.clone();
+        new_params = new_base_params.clone();
         new_params.method = Some("invalidVersion".to_owned());
         assert_trust_did_web_error(
             old_params.merge_from(&new_params),
@@ -540,29 +586,11 @@ mod test {
         new_params.scid = Some("scid".to_owned()); // SAME scid value
         old_params.merge_from(&new_params).unwrap(); // should not panic
 
-        // Test "update_keys" DID parameter
-        old_params = base_params.clone();
-        new_params = base_params.clone();
-        new_params.update_keys = Some(vec!["newUpdateKey".to_owned()]);
-        old_params.merge_from(&new_params).unwrap(); // should not panic
-        new_params.update_keys = None;
-        old_params.merge_from(&new_params).unwrap(); // should not panic
-        new_params.update_keys = Some(vec![]);
-        old_params.merge_from(&new_params).unwrap(); // should not panic
-
-        // Test "next_keys" DID parameter
-        old_params = base_params.clone();
-        new_params = base_params.clone();
-        new_params.next_keys = Some(vec!["newUpdateKeyHash".to_owned()]);
-        old_params.merge_from(&new_params).unwrap(); // should not panic
-        new_params.next_keys = None;
-        old_params.merge_from(&new_params).unwrap(); // should not panic
-        new_params.next_keys = Some(vec![]);
-        old_params.merge_from(&new_params).unwrap(); // should not panic
+        // "update_keys" and "next_keys" tested in separate test
 
         // Test "witness" DID parameter
         old_params = base_params.clone();
-        new_params = base_params.clone();
+        new_params = new_base_params.clone();
         new_params.witnesses = Some(Witness {
             threshold: 1,
             witnesses: vec!["some_valid_witness".to_owned()],
@@ -582,7 +610,7 @@ mod test {
 
         // Test watchers
         old_params = base_params.clone();
-        new_params = base_params.clone();
+        new_params = new_base_params.clone();
         new_params.watchers = Some(vec!["https://example.domain".to_owned()]);
         old_params.merge_from(&new_params).unwrap(); // should not panic
         new_params.watchers = None;
@@ -592,7 +620,7 @@ mod test {
 
         // Test "portable" DID parameter
         old_params = base_params.clone();
-        new_params = base_params;
+        new_params = new_base_params.clone();
 
         new_params.portable = Some(true);
         assert_trust_did_web_error(
@@ -611,6 +639,141 @@ mod test {
             DidResolverErrorKind::InvalidDidParameter,
             "Unsupported 'portable' DID parameter.",
         );
+    }
+
+    #[rstest]
+    fn test_did_webvh_parameters_validate_key_rotation() {
+        let base_params = WebVerifiableHistoryDidMethodParameters::for_genesis_did_doc(
+            "scid".to_owned(),
+            "update_key".to_owned(),
+        );
+
+        // Test "update_keys" DID parameter without pre-rotation
+        let mut old_params = base_params.clone();
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = None;
+        new_params.next_keys = None;
+        old_params.merge_from(&new_params).unwrap(); // should not panic
+
+        // Test "update_keys" DID parameter with starting pre-rotation
+        let mut old_params = base_params.clone();
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = None;
+        new_params.next_keys = Some(vec!["new_update_key".to_owned()]);
+        old_params.merge_from(&new_params).unwrap(); // should not panic
+
+        // Test "update_keys" DID parameter with pre-rotation invalid updateKeys
+        let mut old_params = base_params.clone();
+        old_params.next_keys = Some(vec!["new_update_key".to_owned()]);
+
+        let mut new_params = base_params.clone();
+        new_params.next_keys = None;
+        new_params.update_keys = None;
+
+        let failed_to_update = old_params.merge_from(&new_params); // should return an error
+        assert!(failed_to_update.is_err());
+
+        // Test "update_keys" DID parameter with pre-rotation invalid updateKeys
+        let mut old_params = base_params.clone();
+        old_params.next_keys = Some(vec!["new_update_key".to_owned()]);
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = Some(vec!["invalidUpdateKey".to_owned()]);
+
+        let failed_to_update = old_params.merge_from(&new_params); // should return an error
+        assert!(failed_to_update.is_err());
+
+        // Test "update_keys" DID parameter with pre-rotation invalid updateKeys
+        let mut old_params = base_params.clone();
+        old_params.next_keys = Some(vec!["new_update_key".to_owned()]);
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = Some(vec!["invalidUpdateKey".to_owned()]);
+
+        let failed_to_update = old_params.merge_from(&new_params); // should return an error
+        assert!(failed_to_update.is_err());
+
+        // Test "update_keys" DID parameter with pre-rotation invalid updateKeys
+        let mut old_params = base_params.clone();
+        old_params.next_keys = Some(vec!["new_update_key".to_owned()]);
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = Some(vec!["new_update_key".to_owned(), "update_key".to_owned()]);
+
+        let failed_to_update = old_params.merge_from(&new_params); // should return an error
+        assert!(failed_to_update.is_err());
+
+        // Test "update_keys" DID parameter with pre-rotation invalid updateKeys
+        let mut old_params = base_params.clone();
+        old_params.next_keys = Some(vec!["new_update_key".to_owned()]);
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = Some(vec!["new_update_key".to_owned()]);
+        new_params.next_keys = Some(Vec::new());
+
+        old_params.merge_from(&new_params).unwrap(); // should not panic
+
+        // Test "update_keys" DID parameter with pre-rotation invalid updateKeys
+        let mut old_params = base_params.clone();
+        old_params.next_keys = Some(vec![
+            "new_update_key".to_owned(),
+            "another_new_update_key".to_owned(),
+        ]);
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = Some(vec!["new_update_key".to_owned()]);
+        new_params.next_keys = Some(Vec::new());
+
+        old_params.merge_from(&new_params).unwrap(); // should not panic
+        new_params = base_params.clone();
+        new_params.update_keys = Some(vec!["another_new_update_key".to_owned()]);
+
+        let failed_to_update = old_params.merge_from(&new_params); // should return an error
+        assert!(failed_to_update.is_err());
+
+        // Test "update_keys" DID parameter with pre-rotation invalid updateKeys
+        let mut old_params = base_params.clone();
+        old_params.next_keys = Some(vec![
+            "new_update_key".to_owned(),
+            "another_new_update_key".to_owned(),
+        ]);
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = Some(vec![
+            "new_update_key".to_owned(),
+            "another_new_update_key".to_owned(),
+        ]);
+        new_params.next_keys = Some(Vec::new());
+
+        old_params.merge_from(&new_params).unwrap(); // should not panic
+        new_params = base_params.clone();
+        new_params.update_keys = Some(vec!["another_new_update_key".to_owned()]);
+        new_params.next_keys = None;
+
+        let failed_to_update = old_params.merge_from(&new_params); // should return an error
+        assert!(failed_to_update.is_err());
+
+        // Test "update_keys" DID parameter with pre-rotation twice
+        let mut old_params = base_params.clone();
+        old_params.next_keys = Some(vec![
+            "new_update_key".to_owned(),
+            "another_new_update_key".to_owned(),
+        ]);
+
+        let mut new_params = base_params.clone();
+        new_params.update_keys = Some(vec![
+            "new_update_key".to_owned(),
+            "another_new_update_key".to_owned(),
+        ]);
+        new_params.next_keys = None;
+
+        old_params.merge_from(&new_params).unwrap(); // should not panic
+        new_params = base_params.clone();
+        new_params.update_keys = Some(vec!["another_new_update_key".to_owned()]);
+
+        old_params.merge_from(&new_params).unwrap(); // should not panic
     }
 
     #[rstest]
