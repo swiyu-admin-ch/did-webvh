@@ -25,14 +25,13 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.143", features = ["preserve_order"] }
 chrono = { version = "0.4.41", features = ["serde"] }
 rand = "0.8.5"
-hex = "0.4.3"
-regex = "1.11.2"
+regex = "1.12.2"
 url-escape = "0.1.1"
-thiserror = "2.0.16"
+thiserror = "2.0.17"
 url = "2.5.4"
 rust-embed = { version = "8.7.2" , features = ["include-exclude", "compression"]}
 rayon = "1.11.0"
-did_sidekicks = { git = "https://github.com/swiyu-admin-ch/did-sidekicks.git", tag = "1.0.0" }
+did_sidekicks = { git = "https://github.com/swiyu-admin-ch/did-sidekicks.git", tag = "1.1.0" }
 #did_sidekicks = { path = "../did-sidekicks" }
 
 [build-dependencies]
