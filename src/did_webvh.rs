@@ -1199,14 +1199,12 @@ mod test {
         DidResolverErrorKind::DeserializationFailed,
         "must be before the current datetime"
     )]
-    /* TODO Fix the (test) case, if possible
     #[case(
         "test_data/manually_created/unhappy_path/signed_with_outdated_key.jsonl",
         "did:webvh:QmYDETZ8E1Sj3FiXubkw2D3XRa7Fxz26ykE8JFDZFUHzNU:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        DidResolverErrorKind::InvalidIntegrityProof,
-        "Key extracted from proof is not authorized for update"
+        DidResolverErrorKind::InvalidDidParameter,
+        "Illegal update key detected"
     )]
-     */
     /* TODO generate a proper (did:webvh) test case data using didtoolbox-java
     #[case(
         "test_data/generated_by_tdw_js/already_deactivated.jsonl",

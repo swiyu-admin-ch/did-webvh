@@ -140,6 +140,12 @@ impl WebVerifiableHistoryDidMethodParameters {
         }
 
         // As specified by https://identity.foundation/didwebvh/v1.0/#didwebvh-did-method-parameters:
+        // Defaults to [] if not set in the first log entry.
+        if self.watchers.is_none() {
+            self.watchers = Some(Vec::new());
+        }
+
+        // As specified by https://identity.foundation/didwebvh/v1.0/#didwebvh-did-method-parameters:
         // If not set in the first log entry, its value defaults to an empty array ([])
         if self.next_keys.is_none() {
             self.next_keys = Some(Vec::new());
@@ -229,13 +235,12 @@ impl WebVerifiableHistoryDidMethodParameters {
             // Verification](#pre-rotation-key-hash-generation-and-verification) section of this specification.
             let mut hasher = JcsSha256Hasher::default();
             for update_key in new_params.update_keys.iter().flatten() {
+                let hashed_update_key = hasher.base58btc_encode_multihash_multikey(update_key);
                 if !current_params
                     .next_keys
                     .iter()
                     .flatten()
-                    .any(|next_key_hash| {
-                        *next_key_hash == hasher.base58btc_encode_multihash_multikey(update_key)
-                    })
+                    .any(|next_key_hash| *next_key_hash == hashed_update_key)
                 {
                     return Err(DidResolverError::InvalidDidParameter(
                         format!("Illegal update key detected: {update_key}. All multikey formatted public keys added in a new 'updateKeys' list MUST have their hashes listed in the 'nextKeyHashes' list from the previous log entry (except for the first log entry)")

@@ -259,17 +259,16 @@ mod test {
         "test_data/manually_created/2_log_entries.jsonl",
         "did:webvh:QmYPmKXuvwHeVF8zWdcMvU3UNksUZnR5kUJbhDjEjbZYvX:example.com"
     )]
-    /* TODO Fix the (test) case, if possible
     #[case(
         "test_data/manually_created/key_prerotation.jsonl",
         "did:webvh:QmYDETZ8E1Sj3FiXubkw2D3XRa7Fxz26ykE8JFDZFUHzNU:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
     )]
-     */
     #[case(
         "test_data/generated_by_didtoolbox_java/key_prerotation.jsonl",
         "did:webvh:Qmeyw5eZhD7SKqaJDXkEuMEQSR3m5kBorXDbWHA1zE8jeX:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
     )]
-    /* TODO Fix the (test) case, if possible
+    /* Test case not supported since it sets watchers to null, which causes problem with hash
+    * generation
     #[case(
         "test_data/third_party_test_vectors/pre-1_0-spec.jsonl",
         "did:webvh:QmRcxocrbu6F6nDAiWeFBJXHjqgif3NPnuZyHDzxtEpvjx:example.example"
@@ -287,56 +286,6 @@ mod test {
         "test_data/generated_by_didtoolbox_java/multiple_update_keys.jsonl",
         "did:webvh:Qmdcnp8gJuuFhkh6JpyVCiywenKMzfUhwEhQ7GyhE428ud:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
     )]
-    /* TODO cleanup and add more test cases and migrate the below cases to v1.0
-    #[case(
-        "test_data/generated_by_tdw_js/single_update_key.jsonl",
-        "did:tdw:QmXjp5qhSEvm8oXip43cDX62hZhHZdAMYv7Magy1tkffSz:example.com"
-    )]
-    #[case(
-        "test_data/generated_by_tdw_js/unique_update_keys.jsonl",
-        "did:tdw:QmXjp5qhSEvm8oXip43cDX62hZhHZdAMYv7Magy1tkffSz:example.com"
-    )]
-    #[case(
-        "test_data/generated_by_tdw_js/alternate_update_keys.jsonl",
-        "did:tdw:QmdSU7F2rF8r4m6GZK7Evi2tthfDDxhw3NppU8pJMbd2hB:example.com"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/legacy/did-1.0.0-RC1.jsonl",
-        "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/legacy/did-1.0.0.jsonl",
-        "did:tdw:Qmb95hd5nGZvJY3q6mGcmZrLTNYMmzJYuMx94VNFb27oi9:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/legacy/did-1.1.0.jsonl",
-        "did:tdw:QmVZsmZqj1pGqqdzDeKLwBWZXo5aDucFsYddw9fKPb7e5Z:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/legacy/did-1.2.0.jsonl",
-        "did:tdw:QmX4MSeKo17fvrZQbkHSB4BfkEtJXiGhnbnSAu6oCMYtub:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/legacy/did-1.3.0.jsonl",
-        "did:tdw:Qmdjf4BZUtYnNKWbL5Lj9MqTeqxq5UQBbgU3p5wriwTzDV:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/legacy/did-1.3.1.jsonl",
-        "did:tdw:QmWroVHz78FM6ugJ6MkaD4yu2ihkKmWFiKDcDPXu1AeS1d:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/legacy/did-1.4.0.jsonl",
-        "did:tdw:QmSTru6WjboQ24pVdK21AuX4rV6CEqQSjFQKANaXwGM6wz:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/legacy/did-1.4.1.jsonl",
-        "did:tdw:QmU8WbF9dMzTMU1snugNConzA4tHvPaXRqzyjXn77pUY8G:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
-    )]
-    #[case(
-        "test_data/generated_by_didtoolbox_java/v_0_3_eid_conform/did_doc_without_controller.jsonl",
-        "did:tdw:QmZf4Pb1GoPdYaZBF3Sc1nVspXef4qc816C7eBzzuXMoGk:domain.com%3A8080:path1:path2"
-    )]
-     */
     #[case(
         "test_data/generated_by_didtoolbox_java/v400_did.jsonl",
         "did:webvh:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085"
