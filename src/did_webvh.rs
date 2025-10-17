@@ -191,71 +191,74 @@ impl DidLogEntry {
     #[inline]
     //#[expect(clippy::unwrap_in_result, reason = "..")]
     pub fn verify_data_integrity_proof(&self) -> Result<(), DidResolverError> {
-        match self.proof.to_owned() {
-            Some(proof_vec) => {
-                if proof_vec.is_empty() {
-                    return Err(DidResolverError::InvalidDataIntegrityProof(
-                        "Invalid did log. Proof is empty.".to_owned(),
-                    ));
-                }
-
-                let prev = self.prev_entry.as_ref().map_or(self, |err| err);
-                for proof in proof_vec {
-                    let update_key = match proof.extract_update_key() {
-                        Ok(key) => key,
-                        Err(err) => {
-                            return Err(DidResolverError::InvalidDataIntegrityProof(format!(
-                                "Failed to extract update key due to: {err}"
-                            )))
-                        }
-                    };
-
-                    let verifying_key = prev.is_key_authorized_for_update(update_key)?;
-
-                    if !matches!(proof.crypto_suite_type, Some(CryptoSuiteType::EddsaJcs2022)) {
-                        return Err(DidResolverError::InvalidDataIntegrityProof(format!(
-                            "Unsupported proof's cryptosuite {}",
-                            proof.crypto_suite
-                        )));
-                    }
-
-                    let cryptosuite = EddsaJcs2022Cryptosuite {
-                        verifying_key: Some(verifying_key),
-                        signing_key: None,
-                    };
-
-                    // use entire DidLogEntry for signature
-                    let doc = Self {
-                        version: self.version.clone(),
-                        version_time: self.version_time,
-                        parameters: self.parameters.clone(),
-                        did_doc: self.did_doc.clone(),
-                        did_doc_json: self.did_doc_json.clone(),
-                        proof: None,
-                        prev_entry: None,
-                    }
-                    .to_log_entry_line()?;
-
-                    let doc_hash = JcsSha256Hasher::default()
-                        .encode_hex(&doc)
-                        .map_err(|err| DidResolverError::SerializationFailed(format!("{err}")))?;
-
-                    match cryptosuite.verify_proof(&proof, doc_hash.as_str()) {
-                        Ok(_) => (),
-                        Err(err) => {
-                            return Err(DidResolverError::InvalidDataIntegrityProof(format!(
-                                "Failed to verify proof due to: {err}"
-                            )))
-                        }
-                    };
-                }
-            }
-            None => {
-                return Err(DidResolverError::InvalidDataIntegrityProof(
-                    "Invalid did log. Proof is empty.".to_owned(),
-                ))
-            }
+        let Some(proof_vec) = self.proof.to_owned() else {
+            return Err(DidResolverError::InvalidDataIntegrityProof(
+                "Invalid did log. Proof is empty.".to_owned(),
+            ));
         };
+
+        if proof_vec.is_empty() {
+            return Err(DidResolverError::InvalidDataIntegrityProof(
+                "Invalid did log. Proof is empty.".to_owned(),
+            ));
+        }
+
+        let mut prev = self.prev_entry.as_ref().map_or(self, |err| err);
+        // In all entries with active Key Pre-Rotation, the update keys of the current log
+        // entry are used.
+        if prev.parameters.is_key_pre_rotation_active() {
+            prev = self;
+        }
+
+        for proof in proof_vec {
+            let update_key = match proof.extract_update_key() {
+                Ok(key) => key,
+                Err(err) => {
+                    return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                        "Failed to extract update key due to: {err}"
+                    )))
+                }
+            };
+
+            let verifying_key = prev.is_key_authorized_for_update(update_key)?;
+
+            if !matches!(proof.crypto_suite_type, Some(CryptoSuiteType::EddsaJcs2022)) {
+                return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                    "Unsupported proof's cryptosuite {}",
+                    proof.crypto_suite
+                )));
+            }
+
+            let cryptosuite = EddsaJcs2022Cryptosuite {
+                verifying_key: Some(verifying_key),
+                signing_key: None,
+            };
+
+            // use entire DidLogEntry for signature
+            let doc = Self {
+                version: self.version.clone(),
+                version_time: self.version_time,
+                parameters: self.parameters.clone(),
+                did_doc: self.did_doc.clone(),
+                did_doc_json: self.did_doc_json.clone(),
+                proof: None,
+                prev_entry: None,
+            }
+            .to_log_entry_line()?;
+
+            let doc_hash = JcsSha256Hasher::default()
+                .encode_hex(&doc)
+                .map_err(|err| DidResolverError::SerializationFailed(format!("{err}")))?;
+
+            match cryptosuite.verify_proof(&proof, doc_hash.as_str()) {
+                Ok(_) => (),
+                Err(err) => {
+                    return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                        "Failed to verify proof due to: {err}"
+                    )))
+                }
+            };
+        }
 
         Ok(())
     }
@@ -264,7 +267,7 @@ impl DidLogEntry {
     #[inline]
     pub fn calculate_entry_hash(&self) -> Result<String, DidResolverError> {
         // According to https://identity.foundation/didwebvh/v1.0/#entry-hash-generation-and-verification
-        // 2 Determine hash algorithm, as specified by TODO, is base58btc
+        // 2 Determine hash algorithm from the multihash (https://identity.foundation/didwebvh/v1.0/#term:multihash), value is encoded as base58btc
         // 3 Set the versionId in the entry object to be the versionId from the previous log entry.
         //   If this is the first entry in the log, set the value to <scid>, the value of the SCID of the DID.
         let prev_version_id = match self.prev_entry.to_owned() {
@@ -310,14 +313,14 @@ impl DidLogEntry {
                     ));
                 }
 
-                match update_keys.iter().find(|entry| *entry == &update_key) {
-                    Some(_) => {}
-                    _ => {
-                        return Err(DidResolverError::InvalidDataIntegrityProof(format!(
-                            "Key extracted from proof is not authorized for update: {update_key}"
-                        )))
-                    }
-                };
+                if !update_keys
+                    .iter()
+                    .any(|entry| *entry == update_key.as_str())
+                {
+                    return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                        "Key extracted from proof is not authorized for update: {update_key}"
+                    )));
+                }
 
                 let verifying_key = match Ed25519VerifyingKey::from_multibase(update_key.as_str()) {
                     Ok(key) => key,
@@ -331,13 +334,10 @@ impl DidLogEntry {
                 Ok(verifying_key)
             }
             None => {
-                let prev_entry = match self.prev_entry.to_owned() {
-                    Some(entr) => entr,
-                    _ => {
-                        return Err(DidResolverError::InvalidDataIntegrityProof(
-                            "No update keys detected".to_owned(),
-                        ));
-                    }
+                let Some(prev_entry) = self.prev_entry.to_owned() else {
+                    return Err(DidResolverError::InvalidDataIntegrityProof(
+                        "No update keys detected".to_owned(),
+                    ));
                 };
                 prev_entry.is_key_authorized_for_update(update_key) // recursive call
             }
@@ -364,13 +364,10 @@ impl DidLogEntry {
         });
 
         if let Some(proof) = self.proof.to_owned() {
-            let first_proof = match proof.first() {
-                Some(prf) => prf,
-                None => {
-                    return Err(DidResolverError::InvalidDataIntegrityProof(
-                        "Invalid did log. Proof is empty.".to_owned(),
-                    ))
-                }
+            let Some(first_proof) = proof.first() else {
+                return Err(DidResolverError::InvalidDataIntegrityProof(
+                    "Invalid did log. Proof is empty.".to_owned(),
+                ));
             };
 
             let first_proof_json_val = match first_proof.json_value() {
@@ -509,7 +506,7 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                                 (None, None) => return Err(DidResolverError::DeserializationFailed(
                                     "Missing DID Document parameters.".to_owned(),
                                 )),
-                                (None, Some(new_par)) => {
+                                (None, Some(mut new_par)) => {
                                     // this is the first entry, therefore we check for the base configuration
                                     new_par.validate_initial()?;
 
@@ -519,10 +516,9 @@ impl TryFrom<String> for WebVerifiableHistoryDidLog {
                                     new_params = Some(WebVerifiableHistoryDidMethodParameters::empty());
                                     Some(current_par)
                                 }
-                                (Some(current_par), Some(new_par)) => {
-                                    let mut _current_params = current_par;
-                                    _current_params.merge_from(&new_par)?;
-                                    Some(_current_params)
+                                (Some(mut current_par), Some(new_par)) => {
+                                    current_par.merge_from(&new_par)?;
+                                    Some(current_par)
                                 }
                             }
                         }
@@ -654,15 +650,15 @@ impl WebVerifiableHistoryDidLog {
             expected_version_index += 1;
 
             if entry.version.index != expected_version_index {
-                if expected_version_index == 1 {
-                    return Err(DidResolverError::InvalidDataIntegrityProof(
+                return if expected_version_index == 1 {
+                    Err(DidResolverError::InvalidDataIntegrityProof(
                         "Invalid did log. First entry has to have version id 1".to_owned(),
-                    ));
+                    ))
                 } else {
-                    return Err(DidResolverError::InvalidDataIntegrityProof(format!(
+                    Err(DidResolverError::InvalidDataIntegrityProof(format!(
                         "Invalid did log for version {}. Version id has to be incremented",
                         entry.version.index,
-                    )));
+                    )))
                 }
             }
 
@@ -777,8 +773,14 @@ impl TryFrom<String> for WebVerifiableHistoryId {
         clippy::indexing_slicing,
         reason = "panic-free indexing ensured in code"
     )]
-    #[expect(clippy::unwrap_in_result, reason = "panic-free as long as the regex is valid")]
-    #[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
+    #[expect(
+        clippy::unwrap_in_result,
+        reason = "panic-free as long as the regex is valid"
+    )]
+    #[expect(
+        clippy::unwrap_used,
+        reason = "panic-free as long as the regex is valid"
+    )]
     fn try_from(did_webvh: String) -> Result<Self, Self::Error> {
         let did_webvh_split: Vec<&str> = did_webvh.splitn(4, ":").collect();
         if did_webvh_split.len() < 4 {
@@ -841,7 +843,11 @@ impl TryFrom<String> for WebVerifiableHistoryId {
         // Special characters were encoded by `Url::parse`.
         // URL without domain, that instead use an ip address are already validated in step 5
         if let url::Origin::Tuple(_, url::Host::Domain(dom), _) = url.origin() {
-            if Regex::new(DOMAIN_REGEX).unwrap().captures(dom.as_str()).is_none() {
+            if Regex::new(DOMAIN_REGEX)
+                .unwrap()
+                .captures(dom.as_str())
+                .is_none()
+            {
                 return Err(
                     WebVerifiableHistoryIdResolutionError::InvalidMethodSpecificId(
                         "Domain of provided DID is invalid".to_owned(),
@@ -883,8 +889,14 @@ impl TryFrom<(String, Option<bool>)> for WebVerifiableHistoryId {
         clippy::indexing_slicing,
         reason = "panic-free indexing ensured in code"
     )]
-    #[expect(clippy::unwrap_in_result, reason = "panic-free as long as the regex is valid")]
-    #[expect(clippy::unwrap_used, reason = "panic-free as long as the regex is valid")]
+    #[expect(
+        clippy::unwrap_in_result,
+        reason = "panic-free as long as the regex is valid"
+    )]
+    #[expect(
+        clippy::unwrap_used,
+        reason = "panic-free as long as the regex is valid"
+    )]
     fn try_from(value: (String, Option<bool>)) -> Result<Self, Self::Error> {
         let did_webvh = value.0;
         let allow_http = value.1;
@@ -924,8 +936,14 @@ impl TryFrom<(String, Option<bool>)> for WebVerifiableHistoryId {
                         )
                     }
                 };
-                if Regex::new(HAS_PATH_REGEX).unwrap().captures(url.as_str()).is_some()
-                    || Regex::new(HAS_PORT_REGEX).unwrap().captures(url.as_str()).is_some()
+                if Regex::new(HAS_PATH_REGEX)
+                    .unwrap()
+                    .captures(url.as_str())
+                    .is_some()
+                    || Regex::new(HAS_PORT_REGEX)
+                        .unwrap()
+                        .captures(url.as_str())
+                        .is_some()
                 {
                     Ok(Self {
                         scid: scid.to_owned(),
@@ -1151,14 +1169,12 @@ mod test {
         DidResolverErrorKind::InvalidIntegrityProof,
         "Key extracted from proof is not authorized for update"
     )]
-    /* TODO Fix the (test) case
     #[case(
         "test_data/manually_created/unhappy_path/invalid_scid.jsonl",
         "did:webvh:QmT7BM5RsM9SoaqAQKkNKHBzSEzpS2NRzT2oKaaaPYPpGr:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
-        DidResolverErrorKind::DeserializationFailed,
-        "`versionTime` must be greater than the `versionTime` of the previous entry"
+        DidResolverErrorKind::InvalidIntegrityProof,
+        "invalid DID log integration proof: The SCID"
     )]
-    */
     #[case(
         "test_data/generated_by_didtoolbox_java/unhappy_path/descending_version_datetime_did.jsonl",
         "did:webvh:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
@@ -1182,6 +1198,12 @@ mod test {
         "did:tdw:QmT4kPBFsHpJKvvvxgFUYxnSGPMeaQy1HWwyXMHj8NjLuy:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
         DidResolverErrorKind::DeserializationFailed,
         "must be before the current datetime"
+    )]
+    #[case(
+        "test_data/manually_created/unhappy_path/signed_with_outdated_key.jsonl",
+        "did:webvh:QmYDETZ8E1Sj3FiXubkw2D3XRa7Fxz26ykE8JFDZFUHzNU:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085",
+        DidResolverErrorKind::InvalidDidParameter,
+        "Illegal update key detected"
     )]
     /* TODO generate a proper (did:webvh) test case data using didtoolbox-java
     #[case(
