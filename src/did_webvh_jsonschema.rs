@@ -229,6 +229,47 @@ mod test {
             "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/jwk/v1"],
         }, 
         "proof": [{}]}), false, "\"type\" is a required property")] // proof must not be empty
+    #[case(vec![WebVerifiableHistoryDidLogEntryJsonSchema::V1_0EidConform], json!({
+        "versionId": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR",
+        "versionTime": "2012-12-12T12:12:12Z",
+        "parameters": {
+            "method": "did:webvh:1.0",
+            "scid": "QmZ5tnGo1fHNEzHDpG2Bx5dmT3eGNmBY9QATtm6DrFMzcH",
+            "updateKeys": [
+              "z6MkvdAjfVZ2CWa38V2VgZvZVjSkENZpiuiV5gyRKsXDA8UP",
+              "z6Mkwf4PgXLq8sRfucTggtZXmigKZP7gQhFamk3XHGV54QvF"
+            ],
+            "portable": false,
+            "nextKeyHashes": [
+                "invalid-key-hash"
+            ],
+            "witness": {},
+            "deactivated": false
+        },
+        "state": {
+            "id": "did:webvh:QmZ5tnGo1fHNEzHDpG2Bx5dmT3eGNmBY9QATtm6DrFMzcH:example.com",
+            "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/jwk/v1"],
+            "verificationMethod": [{
+                "id": "did:webvh:QmT7BM5RsM9SoaqAQKkNKHBzSEzpS2NRzT2oKaaaPYPpGr:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:18fa7c77-9dd1-4e20-a147-fb1bec146085#auth-key-01",
+                "type": "JsonWebKey2020",
+                "publicKeyJwk":{
+                    "kty": "EC",
+                    "crv": "P-256",
+                    "x": "N4hbTf7x1eWwjqHOQpAB469BwLYfFzIw7QbSa-vv8VM",
+                    "y": "eebnhG9Fmmw2OwW4BPdKJMKm8wGgo18yp_Q2FpvU57U",
+                    "kid": "auth-key-01"
+                }
+            }],
+        },
+        "proof": [{
+            "type": "DataIntegrityProof",
+            "cryptosuite": "eddsa-jcs-2022",
+            "created": "2012-12-12T12:12:12Z",
+            "verificationMethod": "did:key:z6MkvdAjfVZ2CWa38V2VgZvZVjSkENZpiuiV5gyRKsXDA8UP#z6MkvdAjfVZ2CWa38V2VgZvZVjSkENZpiuiV5gyRKsXDA8UP",
+            "proofPurpose": "authentication",
+            "proofValue": "z4a92V6EKmWvURx99HXVTEM6KJhbVZZ1s4qN8HJXTMesSoDJx1VpTNtuNUpae2eHpXXKwBGjtCYC2EQK7b6eczmnp",
+            "challenge": "1-QmcykRx2WnZz2L9s5ACN34E4ADEYGiCde4BJSzoxrhYoiR"
+        }],}), false, "\"invalid-key-hash\" does not match \"^Q[1-9a-zA-NP-Z]{45,}$\"")]
     fn test_validate_using_schema(
         #[case] schemata: Vec<WebVerifiableHistoryDidLogEntryJsonSchema>,
         #[case] instance: Value,

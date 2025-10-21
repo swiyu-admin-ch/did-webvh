@@ -35,7 +35,7 @@
           }
         },
         "nextKeyHashes": {
-          "type": [ "array", "null" ],
+          "type": [ "array" ],
           "$comment": "A JSON array of strings that are hashes of multikey formatted public keys that MAY be added to the updateKeys list in the next log entry. At least one entry of nextKeyHashes MUST be added to the next updateKeys list.",
           "items": {
             "type": "string",
