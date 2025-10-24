@@ -1,6 +1,11 @@
-![Public Beta banner](https://github.com/e-id-admin/eidch-public-beta/blob/main/assets/github-banner-publicbeta.jpg)
+![Public Beta banner](https://github.com/swiyu-admin-ch/swiyu-admin-ch.github.io/blob/main/assets/images/github-banner.jpg)
 
 # DID WEBVH
+
+[![Build and test](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/build-and-test.yml)
+[![CodeQL Analysis](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/codeql-analyze.yml/badge.svg)](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/codeql-analyze.yml)
+[![OSV-Scanner](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/osv-scanner.yml/badge.svg)](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/osv-scanner.yml)
+[![rust-clippy analyze](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/clippy.yml/badge.svg)](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/clippy.yml)
 
 An official Swiss Government project made by
 the [Federal Office of Information Technology, Systems and Telecommunication FOITT](https://www.bit.admin.ch/)
