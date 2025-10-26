@@ -47,7 +47,7 @@ pub fn criterion_benchmark_did_webvh(c: &mut Criterion) {
     ;
 
     for i in inputs {
-        group.bench_function(BenchmarkId::new("WebVerifiableHistory_read", i), |b| {
+        group.bench_function(BenchmarkId::new("WebVerifiableHistory_resolve", i), |b| {
             b.iter(|| {
                 let did_log_raw_filepath = format!("test_data/generated_by_didtoolbox_java/v{:03}_did.jsonl", i);
                 let did_url =
