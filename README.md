@@ -1,6 +1,6 @@
 ![Public Beta banner](https://github.com/swiyu-admin-ch/swiyu-admin-ch.github.io/blob/main/assets/images/github-banner.jpg)
 
-# DID WEBVH
+# DID WEBVH - DEPRECATED
 
 [![Build and test](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/build-and-test.yml)
 [![CodeQL Analysis](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/codeql-analyze.yml/badge.svg)](https://github.com/swiyu-admin-ch/did-webvh/actions/workflows/codeql-analyze.yml)
